@@ -1,8 +1,9 @@
+{-# LANGUAGE LambdaCase   #-}
 {-# LANGUAGE TypeFamilies #-}
 module SoOSiM.Components.ProcManager.Interface where
 
 import SoOSiM
-import {-# SOURCE #-} SoOSiM.Components.ProcManager.Behaviour (procManager)
+import {-# SOURCE #-} SoOSiM.Components.ProcManager.Behaviour (procMgr)
 import SoOSiM.Components.ProcManager.Types
 
 data ProcManager = ProcManager
@@ -13,7 +14,14 @@ instance ComponentInterface ProcManager where
   type Send ProcManager    = PM_Msg
   initState                = const undefined
   componentName            = const "Process Manager"
-  componentBehaviour       = const procManager
+  componentBehaviour       = const procMgr
+
+processManager :: ComponentId -> Sim ComponentId
+processManager r = componentLookup ProcManager >>= \case
+    Nothing  -> createComponentNPS Nothing Nothing (Just iState) ProcManager
+    Just cId -> return cId
+  where
+    iState = procMgrIState { _rm = r }
 
 terminateProgram :: ComponentId -> Sim ()
 terminateProgram cId = invoke ProcManager cId TerminateProgram >>= (\PM_Void -> return ())

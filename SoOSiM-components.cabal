@@ -42,10 +42,19 @@ library
                       SoOSiM.Components.ResourceManager.Interface
                       SoOSiM.Components.ResourceManager.Types
 
+                      SoOSiM.Components.Scheduler.Behaviour
+                      SoOSiM.Components.Scheduler.Interface
+                      SoOSiM.Components.Scheduler.Types
+
+                      SoOSiM.Components.Thread.Behaviour
+                      SoOSiM.Components.Thread.Interface
+                      SoOSiM.Components.Thread.Types
+
   build-depends:      base                 >= 4.3.1.0,
-                      lens                 >= 3.6.0.3,
+                      lens                 >= 3.7,
                       mtl                  >= 2.1.2,
-                      SoOSiM               >= 0.2.1.0,
+                      SoOSiM               >= 0.2.1.1,
                       stm                  >= 2.4.2,
+                      transformers         >= 0.3.0.0,
                       unordered-containers >= 0.2.2.1
 

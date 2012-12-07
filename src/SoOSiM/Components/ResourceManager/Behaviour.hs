@@ -7,6 +7,7 @@ import           Data.List           (mapAccumR,intersect,(\\),partition)
 
 import SoOSiM
 import SoOSiM.Components.ResourceDescriptor
+
 import SoOSiM.Components.ResourceManager.Interface
 import SoOSiM.Components.ResourceManager.Types
 

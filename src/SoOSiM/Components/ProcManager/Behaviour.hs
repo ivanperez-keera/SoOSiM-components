@@ -1,4 +1,6 @@
-module SoOSiM.Components.ProcManager.Behaviour where
+module SoOSiM.Components.ProcManager.Behaviour
+  (procMgr)
+where
 
 import Control.Applicative
 import Control.Lens
@@ -20,16 +22,16 @@ import SoOSiM.Components.Thread
 import SoOSiM.Components.ProcManager.Interface
 import SoOSiM.Components.ProcManager.Types
 
-procManager ::
+procMgr ::
   PM_State
   -> Input PM_Cmd
   -> Sim PM_State
-procManager s i = execStateT (procManager' i) s
+procMgr s i = execStateT (behaviour i) s
 
-procManager' ::
+behaviour ::
   Input PM_Cmd
   -> StateT PM_State Sim ()
-procManager' (Message (RunProgram fN) retAddr) = do
+behaviour (Message (RunProgram fN) retAddr) = do
   -- invokes the Application Handler
   thread_graph <- lift $ applicationHandler >>= flip loadProgram fN
 
@@ -45,11 +47,11 @@ procManager' (Message (RunProgram fN) retAddr) = do
   -- singleton implementation of the resource manager for this file:
   -- function instance() will locate the resource manager for this
   -- instance of the process manager.
-  rId <- use rm
-  aId <- use appId
-  res <- lift $ requestResources rId aId rl
+  rId  <- use rm
+  pmId <- lift $ getComponentId
+  res  <- lift $ requestResources rId pmId rl
 
-  -- Now, if necessary I shoud allocate threads to resources. in
+  -- Now, if necessary I should allocate threads to resources. in
   -- this first sample implementation, I ignore the content of the
   -- resource descriptors, and I assume that all thread and
   -- resources have the correct ISA.
@@ -63,7 +65,7 @@ procManager' (Message (RunProgram fN) retAddr) = do
   let threads'
        = foldr
          (\e t ->
-          let index = length $ (t HashMap.! (end e)) ^. in_ports
+          let index = length $ t ^. _at (end e) . in_ports
               -- Create the in_port of the destination thread, and
               -- initialize it with the number of tokens
               t'    = HashMap.adjust (in_ports %~ (++ [n_tokens e])) (end e) t
@@ -83,12 +85,13 @@ procManager' (Message (RunProgram fN) retAddr) = do
 
   -- Now initialize the scheduler, passing the list of
   -- threads, and the list of resources
-  sId <- use sched
-  lift $ invokeAsync Scheduler sId (Init threads' rc) ignore
+  pmId <- lift $ getComponentId
+  sId  <- lift $ scheduler pmId
+  lift $ initScheduler sId threads' rc
 
   lift $ respond ProcManager retAddr PM_Void
 
-procManager' _ = return ()
+behaviour _ = return ()
 
 prepareResourceRequestList ::
   ApplicationGraph

@@ -1,11 +1,11 @@
 module SoOSiM.Components.ProcManager.Behaviour
-  (procManager)
+  (procMgr)
 where
 
 import SoOSiM
 import SoOSiM.Components.ProcManager.Types
 
-procManager ::
+procMgr ::
   PM_State
   -> Input PM_Cmd
   -> Sim PM_State

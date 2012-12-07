@@ -10,11 +10,12 @@ import SoOSiM.Components.SoOSApplicationGraph
 
 data PM_State
   = PM_State
-  { _appId        :: AppId
-  , _sched        :: ComponentId
-  , _thread_graph :: ApplicationGraph
+  { _thread_graph :: ApplicationGraph
   , _rm           :: ComponentId
   }
+
+procMgrIState :: PM_State
+procMgrIState = PM_State (ApplicationGraph [] []) (-1)
 
 makeLenses ''PM_State
 
