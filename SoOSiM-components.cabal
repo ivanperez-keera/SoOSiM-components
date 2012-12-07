@@ -16,7 +16,7 @@ Extra-source-files:   README.md
 
 source-repository head
   type: git
-  location: git://github.com/christiaanb/SoOS-components.git
+  location: git://github.com/christiaanb/SoOSiM-components.git
 
 library
   HS-Source-Dirs:     src
