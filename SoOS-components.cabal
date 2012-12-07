@@ -1,0 +1,51 @@
+name:                 SoOS-components
+version:              0.1.0.0
+synopsis:             S(o)OS Components
+-- description:
+homepage:             http://soos-project.eu/
+license:              BSD3
+license-file:         LICENSE
+author:               Christiaan Baaij
+maintainer:           christiaan.baaij@gmail.com
+-- copyright:
+category:             Simulation
+build-type:           Simple
+cabal-version:        >=1.8
+
+Extra-source-files:   README.md
+
+source-repository head
+  type: git
+  location: git://github.com/christiaanb/SoOS-components.git
+
+library
+  HS-Source-Dirs:     src
+
+  exposed-modules:    SoOSiM.Components.ApplicationHandler
+                      SoOSiM.Components.Common
+                      SoOSiM.Components.ProcManager
+                      SoOSiM.Components.ResourceDescriptor
+                      SoOSiM.Components.ResourceManager
+                      SoOSiM.Components.Scheduler
+                      SoOSiM.Components.SoOSApplicationGraph
+                      SoOSiM.Components.Thread
+
+  other-modules:      SoOSiM.Components.ApplicationHandler.Behaviour
+                      SoOSiM.Components.ApplicationHandler.Interface
+                      SoOSiM.Components.ApplicationHandler.Types
+
+                      SoOSiM.Components.ProcManager.Behaviour
+                      SoOSiM.Components.ProcManager.Interface
+                      SoOSiM.Components.ProcManager.Types
+
+                      SoOSiM.Components.ResourceManager.Behaviour
+                      SoOSiM.Components.ResourceManager.Interface
+                      SoOSiM.Components.ResourceManager.Types
+
+  build-depends:      base                 >= 4.3.1.0,
+                      lens                 >= 3.6.0.3,
+                      mtl                  >= 2.1.2,
+                      SoOSiM               >= 0.2.1.0,
+                      stm                  >= 2.4.2,
+                      unordered-containers >= 0.2.2.1
+
