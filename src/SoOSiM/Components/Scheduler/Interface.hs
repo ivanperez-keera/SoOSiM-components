@@ -2,6 +2,7 @@
 {-# LANGUAGE TypeFamilies #-}
 module SoOSiM.Components.Scheduler.Interface where
 
+import Control.Concurrent.STM.TVar (TVar)
 import Data.HashMap.Strict (HashMap)
 
 import SoOSiM
@@ -33,8 +34,15 @@ scheduler p = componentLookup Scheduler >>= \case
 
 initScheduler ::
   ComponentId
-  -> HashMap ThreadId Thread
+  -> HashMap ThreadId (TVar Thread)
   -> [(ResourceId,ResourceDescriptor)]
   -> Sim ()
 initScheduler cId th res =
   invokeAsync Scheduler cId (Init th res) ignore
+
+threadCompleted ::
+  ComponentId
+  -> ThreadId
+  -> Sim ()
+threadCompleted cId th =
+  invokeAsync Scheduler cId (ThreadCompleted th) ignore

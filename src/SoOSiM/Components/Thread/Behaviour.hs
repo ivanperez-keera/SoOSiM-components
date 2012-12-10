@@ -3,18 +3,22 @@
 module SoOSiM.Components.Thread.Behaviour where
 
 import Control.Concurrent.STM
-import Control.Concurrent.STM.TBQueue
+import Control.Concurrent.STM.TQueue
 import Control.Lens
 import Control.Monad
+import Data.Maybe
 
 import SoOSiM
+import SoOSiM.Components.Common
+import SoOSiM.Components.Scheduler.Interface (threadCompleted)
+
 import SoOSiM.Components.Thread.Interface
 import SoOSiM.Components.Thread.Types
 
 data TH_State
   = TH_State
-  { _in_port_queues  :: [TBQueue ()]
-  , _out_port_queues :: [TBQueue ()]
+  { _actual_id       :: ThreadId
+  , _sched_id        :: ComponentId
   , _thread_state    :: Maybe (TVar Thread)
   }
 
@@ -29,29 +33,36 @@ data TH_Msg
   deriving Typeable
 
 threadIState :: TH_State
-threadIState = TH_State [] [] Nothing
+threadIState = TH_State (-1) (-1) Nothing
 
 threadBehaviour ::
   TH_State
   -> Input TH_Cmd
   -> Sim TH_State
-threadBehaviour s@(TH_State _ _ (Just ts)) (Message TH_Start retAddr) = do
-  runSTM $ do
-    t <- readTVar ts
-    case (t ^. execution_state) of
-      Blocked   -> return ()
-      Waiting   -> return ()
-      Executing -> do
-        tokenss <- zipWithM (\q i -> replicateM i (readTBQueue q))
-                            (s ^. in_port_queues)
-                            (t ^. in_ports)
-
-        zipWithM_ (\q i -> replicateM i (writeTBQueue q ()))
-                  (s ^. out_port_queues)
-                  (t ^. out_ports & fmap snd)
-
-        modifyTVar' ts (execution_state .~ Blocked)
-
-  yield s
-
 threadBehaviour s@(TH_State _ _ Nothing) _ = yield s
+
+threadBehaviour s _ = do
+  let ts = fromJust $ s ^. thread_state
+  t <- runSTM $ readTVar ts
+  case (t ^. execution_state) of
+    Executing -> do
+      -- Read from inputs ports
+      runSTM $ mapM_ readTQueue (t ^. in_ports)
+
+      -- Execute computation
+      compute (t ^. exec_cycles) ()
+
+      -- Write to output ports
+      runSTM $ mapM_ (\(_,q) -> writeTQueue q ()) (t^.out_ports)
+
+      -- Signal scheduler that thread has completed
+      threadCompleted (s ^. sched_id) (s ^. actual_id)
+
+      yield s
+
+    -- Waiting to start
+    Waiting -> yield s
+
+    -- Finished one execution cycle
+    Blocked -> stop
+

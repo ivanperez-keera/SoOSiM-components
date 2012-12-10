@@ -1,9 +1,12 @@
 {-# LANGUAGE TypeFamilies #-}
 module SoOSiM.Components.ResourceManager.Interface where
 
+import Data.HashMap.Strict (empty)
+
 import SoOSiM
 import SoOSiM.Components.Common
 import SoOSiM.Components.ResourceDescriptor
+
 import {-# SOURCE #-} SoOSiM.Components.ResourceManager.Behaviour (resourceManager)
 import SoOSiM.Components.ResourceManager.Types
 
@@ -13,7 +16,7 @@ instance ComponentInterface ResourceManager where
   type State ResourceManager   = RM_State
   type Receive ResourceManager = RM_Cmd
   type Send ResourceManager    = RM_Msg
-  initState                    = const undefined
+  initState                    = const (RM_State empty [] [])
   componentName                = const "Resource Manager"
   componentBehaviour           = const resourceManager
 

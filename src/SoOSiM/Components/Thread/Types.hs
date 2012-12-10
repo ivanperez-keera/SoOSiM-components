@@ -2,6 +2,7 @@
 module SoOSiM.Components.Thread.Types where
 
 import Control.Lens
+import Control.Concurrent.STM.TQueue
 
 import SoOSiM.Components.Common
 import SoOSiM.Components.ResourceDescriptor
@@ -13,8 +14,8 @@ data Thread
   { _threadId        :: ThreadId
   , _n_in            :: Int
   , _n_out           :: Int
-  , _in_ports        :: [Int]
-  , _out_ports       :: [(ThreadId,Int)]
+  , _in_ports        :: [TQueue ()]
+  , _out_ports       :: [(ThreadId,TQueue ())]
   , _exec_cycles     :: Int
   , _rr              :: ResourceDescriptor
   , _execution_state :: ThreadState

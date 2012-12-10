@@ -12,7 +12,7 @@ instance ComponentInterface ProcManager where
   type State ProcManager   = PM_State
   type Receive ProcManager = PM_Cmd
   type Send ProcManager    = PM_Msg
-  initState                = const undefined
+  initState                = const procMgrIState
   componentName            = const "Process Manager"
   componentBehaviour       = const procMgr
 

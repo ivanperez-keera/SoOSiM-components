@@ -1,11 +1,21 @@
 module SoOSiM.Components.Thread.Behaviour
-  (TH_State,TH_Cmd,TH_Msg,threadBehaviour,threadIState)
+  (TH_State(..),TH_Cmd,TH_Msg,threadBehaviour,threadIState)
 where
 
+import Control.Concurrent.STM.TVar (TVar)
+
 import SoOSiM
+import SoOSiM.Components.Common
 import SoOSiM.Components.Thread.Types
 
 data TH_State
+  = TH_State
+  { _actual_id    :: ThreadId
+  , _sched_id     :: ComponentId
+  , _thread_state :: Maybe (TVar Thread)
+  }
+
+
 data TH_Cmd
 data TH_Msg
 

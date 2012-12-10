@@ -3,11 +3,15 @@ module SoOSiM.Components.ProcManager.Behaviour
 where
 
 import Control.Applicative
+import Control.Concurrent.STM.TVar   (newTVar)
+import Control.Concurrent.STM.TQueue (newTQueue,writeTQueue)
 import Control.Lens
 import Control.Monad
 import Control.Monad.State.Strict
+import Data.Foldable
 import qualified Data.HashMap.Strict as HashMap
 import Data.Maybe (fromJust)
+import qualified Data.Traversable as T
 
 import SoOSiM
 import SoOSiM.Components.ApplicationHandler
@@ -61,20 +65,22 @@ behaviour (Message (RunProgram fN) retAddr) = do
               $ map (\v -> (v_id v, newThread (v_id v) (executionTime v)))
               $ vertices thread_graph
 
-  -- Make connections
-  let threads'
-       = foldr
-         (\e t ->
-          let index = length $ t ^. _at (end e) . in_ports
-              -- Create the in_port of the destination thread, and
-              -- initialize it with the number of tokens
-              t'    = HashMap.adjust (in_ports %~ (++ [n_tokens e])) (end e) t
+  tbqueues <- lift $ runSTM $ replicateM (length $ edges thread_graph) newTQueue
 
-              -- create the out_ports of the source thread, and
-              -- initialize it with the pair (thread_id, destination port)
-          in  HashMap.adjust (out_ports %~ (++ [(end e,index)])) (start e) t'
+  -- Make connections
+  (threads',[]) <- foldrM
+         (\e (t,(q:qs)) -> do
+            let -- Create the in_port of the destination thread, and
+                -- initialize it with the number of tokens
+                t'    = HashMap.adjust (in_ports %~ (++ [q])) (end e) t
+            lift $ runSTM $ replicateM (n_tokens e) (writeTQueue q ())
+
+                -- create the out_ports of the source thread, and
+                -- initialize it with the pair (thread_id, destination port)
+            let t''   =  HashMap.adjust (out_ports %~ (++ [(end e,q)])) (start e) t'
+            return (t'',qs)
          )
-         threads
+         (threads,tbqueues)
        $ edges thread_graph
 
   -- Now initialize the scheduler, passing the list of
@@ -85,9 +91,10 @@ behaviour (Message (RunProgram fN) retAddr) = do
 
   -- Now initialize the scheduler, passing the list of
   -- threads, and the list of resources
+  threads'' <- T.mapM (lift . runSTM . newTVar) threads'
   pmId <- lift $ getComponentId
   sId  <- lift $ scheduler pmId
-  lift $ initScheduler sId threads' rc
+  lift $ initScheduler sId threads'' rc
 
   lift $ respond ProcManager retAddr PM_Void
 

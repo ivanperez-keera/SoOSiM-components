@@ -2,8 +2,9 @@
 {-# LANGUAGE TemplateHaskell    #-}
 module SoOSiM.Components.Scheduler.Types where
 
-import Control.Lens
-import Data.HashMap.Strict (HashMap,empty)
+import Control.Concurrent.STM.TVar (TVar)
+import Control.Lens                (makeLenses)
+import Data.HashMap.Strict         (HashMap,empty)
 
 import SoOSiM
 import SoOSiM.Components.Common
@@ -15,7 +16,7 @@ data ResStatus = IDLE_RES | BUSY_RES
 data SC_State
   = SC_State
   { _pm           :: ComponentId
-  , _thread_list  :: HashMap ThreadId Thread
+  , _thread_list  :: HashMap ThreadId (TVar Thread)
   , _ready        :: [ThreadId]
   , _blocked      :: [ThreadId]
   , _exec_threads :: HashMap ThreadId ResourceId
@@ -29,7 +30,7 @@ schedIState = SC_State (-1) empty [] [] empty empty empty
 makeLenses ''SC_State
 
 data SC_Cmd
-  = Init (HashMap ThreadId Thread) [(ResourceId,ResourceDescriptor)]
+  = Init (HashMap ThreadId (TVar Thread)) [(ResourceId,ResourceDescriptor)]
   | ThreadCompleted ThreadId
   | WakeUpThreads
   | FindFreeResources ThreadId
