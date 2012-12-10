@@ -30,6 +30,8 @@ library
                       SoOSiM.Components.SoOSApplicationGraph
                       SoOSiM.Components.Thread
 
+                      SoOSiM.Examples.Example1
+
   other-modules:      SoOSiM.Components.ApplicationHandler.Behaviour
                       SoOSiM.Components.ApplicationHandler.Interface
                       SoOSiM.Components.ApplicationHandler.Types
@@ -53,7 +55,7 @@ library
   build-depends:      base                 >= 4.3.1.0,
                       lens                 >= 3.7.0.2,
                       mtl                  >= 2.1.2,
-                      SoOSiM               >= 0.2.3.0,
+                      SoOSiM               >= 0.2.4.0,
                       stm                  >= 2.4.2,
                       transformers         >= 0.3.0.0,
                       unordered-containers >= 0.2.2.1

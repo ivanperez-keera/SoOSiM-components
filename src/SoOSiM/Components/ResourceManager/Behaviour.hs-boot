@@ -1,11 +1,11 @@
 module SoOSiM.Components.ResourceManager.Behaviour
-  (resourceManager)
+  (behaviour)
 where
 
 import SoOSiM
 import SoOSiM.Components.ResourceManager.Types
 
-resourceManager ::
+behaviour ::
   RM_State
   -> Input RM_Cmd
   -> Sim RM_State

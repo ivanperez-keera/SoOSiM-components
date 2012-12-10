@@ -37,6 +37,7 @@ behaviour ::
   -> StateT PM_State Sim ()
 behaviour (Message (RunProgram fN) retAddr) = do
   -- invokes the Application Handler
+  lift $ traceMsg "Invoke the Application Handler"
   thread_graph <- lift $ applicationHandler >>= flip loadProgram fN
 
   -- Now we have to contact the Resource Manager
@@ -53,7 +54,9 @@ behaviour (Message (RunProgram fN) retAddr) = do
   -- instance of the process manager.
   rId  <- use rm
   pmId <- lift $ getComponentId
+  lift $ traceMsg "Invoke the Resource Manager"
   res  <- lift $ requestResources rId pmId rl
+  lift $ traceMsg ("Got resources: " ++ show res)
 
   -- Now, if necessary I should allocate threads to resources. in
   -- this first sample implementation, I ignore the content of the

@@ -1,3 +1,4 @@
+{-# LANGUAGE LambdaCase   #-}
 {-# LANGUAGE TypeFamilies #-}
 module SoOSiM.Components.ResourceManager.Interface where
 
@@ -7,7 +8,7 @@ import SoOSiM
 import SoOSiM.Components.Common
 import SoOSiM.Components.ResourceDescriptor
 
-import {-# SOURCE #-} SoOSiM.Components.ResourceManager.Behaviour (resourceManager)
+import {-# SOURCE #-} SoOSiM.Components.ResourceManager.Behaviour (behaviour)
 import SoOSiM.Components.ResourceManager.Types
 
 data ResourceManager = ResourceManager
@@ -18,7 +19,13 @@ instance ComponentInterface ResourceManager where
   type Send ResourceManager    = RM_Msg
   initState                    = const (RM_State empty [] [])
   componentName                = const "Resource Manager"
-  componentBehaviour           = const resourceManager
+  componentBehaviour           = const behaviour
+
+resourceManager :: Sim ComponentId
+resourceManager = do
+  componentLookup ResourceManager >>= \case
+    Nothing  -> createComponent ResourceManager
+    Just cId -> return cId
 
 addResource :: ComponentId -> ResourceId -> ResourceDescriptor -> Sim ()
 addResource cId rId rd = invoke ResourceManager cId (AddResource rId rd) >>= (\RM_Void -> return ())
