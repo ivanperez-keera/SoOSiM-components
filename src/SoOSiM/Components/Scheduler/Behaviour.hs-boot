@@ -9,4 +9,3 @@ sched ::
   SC_State
   -> Input SC_Cmd
   -> Sim SC_State
-

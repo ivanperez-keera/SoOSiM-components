@@ -47,7 +47,7 @@ behaviour (Message (RunProgram fN) retAddr) = do
   -- the number of desired resources
   let rl = prepareResourceRequestList thread_graph
 
-  -- the resource manager for this Process manager shoud be
+  -- the resource manager for this Process manager should be
   -- uniquely identified. here I am assuming that we have a
   -- singleton implementation of the resource manager for this file:
   -- function instance() will locate the resource manager for this
@@ -88,6 +88,7 @@ behaviour (Message (RunProgram fN) retAddr) = do
 
   -- Now initialize the scheduler, passing the list of
   -- threads, and the list of resources
+  lift $ traceMsg ("Get resource descriptions")
   rc <- mapM (\x -> do d <- use rm >>= (\rId -> lift $ getResourceDescription rId x)
                        return (x,fromJust d)
              ) res
@@ -97,8 +98,12 @@ behaviour (Message (RunProgram fN) retAddr) = do
   threads'' <- T.mapM (lift . runSTM . newTVar) threads'
   pmId <- lift $ getComponentId
   sId  <- lift $ scheduler pmId
+  lift $ traceMsg ("Start the scheduler")
   lift $ initScheduler sId threads'' rc
 
+  lift $ respond ProcManager retAddr PM_Void
+
+behaviour (Message TerminateProgram retAddr) = do
   lift $ respond ProcManager retAddr PM_Void
 
 behaviour _ = return ()

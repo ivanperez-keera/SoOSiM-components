@@ -4,7 +4,7 @@ import SoOSiM
 import SoOSiM.Components.Common
 
 data ISA = ANY_ISA | X86 | ARM | SPARC
-  deriving Eq
+  deriving (Eq,Show)
 
 type ResourceId = NodeId
 
@@ -12,7 +12,7 @@ data ResourceDescriptor
   = ResourceDescriptor
   { isa_id   :: ISA
   , mem_size :: Int
-  }
+  } deriving Show
 
 data Resource
   = Resource

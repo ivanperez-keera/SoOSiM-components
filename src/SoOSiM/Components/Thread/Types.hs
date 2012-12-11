@@ -24,4 +24,3 @@ data Thread
   }
 
 makeLenses ''Thread
-

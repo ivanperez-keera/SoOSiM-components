@@ -12,6 +12,7 @@ import SoOSiM.Components.ResourceDescriptor
 import SoOSiM.Components.Thread
 
 data ResStatus = IDLE_RES | BUSY_RES
+  deriving Eq
 
 data SC_State
   = SC_State
@@ -41,5 +42,3 @@ data SC_Msg
   = SC_Void
   | SC_Node (Maybe ResourceId)
   deriving Typeable
-
-

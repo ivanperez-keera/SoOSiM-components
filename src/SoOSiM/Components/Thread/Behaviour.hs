@@ -42,6 +42,7 @@ threadBehaviour ::
 threadBehaviour s@(TH_State _ _ Nothing) _ = yield s
 
 threadBehaviour s _ = do
+  traceMsg "Starting computation"
   let ts = fromJust $ s ^. thread_state
   t <- runSTM $ readTVar ts
   case (t ^. execution_state) of
@@ -56,13 +57,17 @@ threadBehaviour s _ = do
       runSTM $ mapM_ (\(_,q) -> writeTQueue q ()) (t^.out_ports)
 
       -- Signal scheduler that thread has completed
+      runSTM $ modifyTVar' ts (execution_state .~ Waiting)
       threadCompleted (s ^. sched_id) (s ^. actual_id)
-
-      yield s
+      traceMsg "Finished computation"
+      stop
 
     -- Waiting to start
-    Waiting -> yield s
+    Waiting -> do
+      traceMsg "Waiting"
+      return s
 
     -- Finished one execution cycle
-    Blocked -> stop
-
+    Blocked -> do
+      traceMsg "Stopping"
+      stop

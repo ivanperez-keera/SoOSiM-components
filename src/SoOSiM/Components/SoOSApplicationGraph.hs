@@ -12,20 +12,20 @@ data Vertex
   , resourceRequirements  :: ResourceDescriptor
   , pointerToCodeInMemory :: Int
   , executionTime         :: Int
-  }
+  } deriving Show
 
 data Edge
   = Edge
   { start    :: VertexId
   , end      :: VertexId
   , n_tokens :: Int
-  }
+  } deriving Show
 
 data ApplicationGraph
   = ApplicationGraph
   { vertices :: [Vertex]
   , edges    :: [Edge]
-  }
+  } deriving Show
 
 numberOfVertices :: ApplicationGraph -> Int
 numberOfVertices (ApplicationGraph v _) = length v

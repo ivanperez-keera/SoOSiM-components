@@ -14,9 +14,6 @@ simstate = initSim $ do
   n0 <- getNodeId
   n1 <- createNode
 
-  traceMsg "Start the application handler"
-  appHndlrId <- applicationHandler
-
   traceMsg "Start the resource manager"
   rmId       <- resourceManager
   addResource rmId n0 anyRes

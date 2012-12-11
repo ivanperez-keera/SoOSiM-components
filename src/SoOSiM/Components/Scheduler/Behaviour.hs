@@ -42,14 +42,20 @@ behaviour ::
   Input SC_Cmd
   -> Sched ()
 behaviour (Message (Init tl res) retAddr) = do
+  -- Initializes all resources
   mapM_ (\x -> do res_map.at (fst x)   ?= IDLE_RES
                   res_types.at (fst x) ?= (snd x)
         ) res
+
+  -- all threads are initially blocked
+  blocked .= (HashMap.keys tl)
+
   thread_list .= tl
   schedule
   liftS $ respond Scheduler retAddr SC_Void
 
 behaviour (Message (ThreadCompleted th) retAddr) = do
+  liftS $ traceMsg $ "Thread " ++ show th ++ " has finished."
   -- Block the thread
   modifyThread (thread_list.at th) (\t -> modifyTVar' t (execution_state .~ Blocked))
   -- Get the resource where it was executing
@@ -80,7 +86,9 @@ schedule = do
   -- CONSUMED, NOTHING ELSE TO DO)
   finished <- (&&) <$> (uses ready null) <*> (uses exec_threads HashMap.null)
   if finished
-    then use pm >>= (liftS . terminateProgram)
+    then do
+      liftS $ traceMsg ("Program finished")
+      use pm >>= (liftS . terminateProgram)
     else do
     -- Otherwise, start executing threads on resources
     -- Visit the read list in order of priority
@@ -93,7 +101,7 @@ schedule = do
         ready                              %= (delete th)
         res_map._at res                    .= BUSY_RES
         modifyThread (thread_list.at th) (\t -> modifyTVar' t (execution_state .~ Executing))
-        exec_threads._at th                .= res
+        exec_threads.at th                 ?= res
         -- Start the tread on the node
         Just t <- use $ thread_list.at th
         sId    <- liftS $ getComponentId
@@ -102,6 +110,7 @@ schedule = do
 -- Look at blocked thread, to see if someone needs to be woken up
 wake_up_threads :: Sched ()
 wake_up_threads = do
+  liftS $ traceMsg $ "Waking up threads"
   -- Check ever blocked thread to see if it has at least 1 token in
   -- each incoming link; if so, move the thread from blocked to ready
   tIds <- use blocked
@@ -128,12 +137,17 @@ wake_up_threads = do
 
 find_free_resource :: ThreadId -> Sched (Maybe ResourceId)
 find_free_resource th = do
-  x   <- use res_types
+  rt  <- use res_types
+  rs  <- use res_map
   thM <- readThread (thread_list.at th)
   maybe' thM (return Nothing) $ \th -> do
-    let rM = listToMaybe . HashMap.keys
+    let rC = HashMap.keys
            $ HashMap.filter (\r -> isComplient r (th^.rr))
-           x
+             rt
+    let rM = listToMaybe
+           . HashMap.keys
+           $ HashMap.filterWithKey (\k v -> k `elem` rC && v == IDLE_RES)
+             rs
     return rM
 
 modifyThread l f = use l >>= (maybe (return ()) (liftS . runSTM . f))

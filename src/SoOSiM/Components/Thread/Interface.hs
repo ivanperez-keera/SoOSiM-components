@@ -36,4 +36,3 @@ threadInstance ::
 threadInstance tid sid th nid = do
   _ <- createComponentNPS (Just nid) Nothing (Just $ TH_State tid sid (Just th)) (ThreadIFace tid)
   return ()
-
