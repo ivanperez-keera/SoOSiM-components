@@ -36,9 +36,10 @@ initScheduler ::
   ComponentId
   -> HashMap ThreadId (TVar Thread)
   -> [(ResourceId,ResourceDescriptor)]
+  -> HashMap ThreadId [ResourceId]
   -> Sim ()
-initScheduler cId th res =
-  invokeAsync Scheduler cId (Init th res) ignore
+initScheduler cId th res th_all =
+  invokeAsync Scheduler cId (Init th res th_all) ignore
 
 threadCompleted ::
   ComponentId

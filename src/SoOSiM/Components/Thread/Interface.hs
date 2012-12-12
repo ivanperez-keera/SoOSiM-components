@@ -21,17 +21,19 @@ instance ComponentInterface ThreadIFace where
   componentName (ThreadIFace tid) = ("Thread: " ++ show tid)
   componentBehaviour              = const threadBehaviour
 
+-- | Create a new thread
 newThread ::
-  ThreadId
-  -> Int
+  ThreadId  -- ^ ThreadId
+  -> Int    -- ^ Number of cycles needed to execute
   -> Thread
 newThread tId exec = Thread tId 0 0 [] [] exec anyRes Blocked (-1) 0
 
+-- | Create a new thread body / instance
 threadInstance ::
-  ThreadId
-  -> ComponentId
-  -> TVar Thread
-  -> NodeId
+  ThreadId       -- ^ (copy of) ThreadId
+  -> ComponentId -- ^ ComponentID of the scheduler controlling the thread
+  -> TVar Thread -- ^ Reference to the thread meta-data
+  -> NodeId      -- ^ Node on which to instantiate the thread
   -> Sim ()
 threadInstance tid sid th nid = do
   _ <- createComponentNPS (Just nid) Nothing (Just $ TH_State tid sid (Just th)) (ThreadIFace tid)

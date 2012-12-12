@@ -1,5 +1,7 @@
 module SoOSiM.Components.ApplicationHandler
-  (module Exported)
+  ( applicationHandler
+  , loadProgram
+  )
 where
 
-import SoOSiM.Components.ApplicationHandler.Interface as Exported
+import SoOSiM.Components.ApplicationHandler.Interface

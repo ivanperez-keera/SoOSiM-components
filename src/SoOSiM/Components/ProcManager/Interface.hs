@@ -16,6 +16,7 @@ instance ComponentInterface ProcManager where
   componentName            = const "Process Manager"
   componentBehaviour       = const procMgr
 
+-- | Start the processmanager
 processManager :: ComponentId -> Sim ComponentId
 processManager r = componentLookup ProcManager >>= \case
     Nothing  -> createComponentNPS Nothing Nothing (Just iState) ProcManager

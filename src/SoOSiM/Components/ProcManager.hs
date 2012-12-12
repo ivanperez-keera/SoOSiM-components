@@ -1,5 +1,8 @@
 module SoOSiM.Components.ProcManager
-  (module Exported)
+  ( processManager
+  , runProgram
+  , terminateProgram
+  )
 where
 
-import SoOSiM.Components.ProcManager.Interface as Exported
+import SoOSiM.Components.ProcManager.Interface

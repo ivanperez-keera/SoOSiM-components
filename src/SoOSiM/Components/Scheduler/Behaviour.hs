@@ -41,7 +41,8 @@ liftS = Sched . lift
 behaviour ::
   Input SC_Cmd
   -> Sched ()
-behaviour (Message (Init tl res) retAddr) = do
+behaviour (Message (Init tl res th_all) retAddr) = do
+  thread_list .= tl
   -- Initializes all resources
   mapM_ (\x -> do res_map.at (fst x)   ?= IDLE_RES
                   res_types.at (fst x) ?= (snd x)
@@ -50,9 +51,13 @@ behaviour (Message (Init tl res) retAddr) = do
   -- all threads are initially blocked
   blocked .= (HashMap.keys tl)
 
-  thread_list .= tl
-  schedule
+  thread_res_allocation .= th_all
+
   liftS $ respond Scheduler retAddr SC_Void
+
+  -- Ready! Now we have to call schedule for the first time
+  schedule
+
 
 behaviour (Message (ThreadCompleted th) retAddr) = do
   liftS $ traceMsg $ "Thread " ++ show th ++ " has finished."
@@ -71,11 +76,56 @@ behaviour (Message (ThreadCompleted th) retAddr) = do
   liftS $ respond Scheduler retAddr SC_Void
   schedule
 
-behaviour (Message Schedule retAddr) = do
-  liftS $ respond Scheduler retAddr SC_Void
-  schedule
-
 behaviour _ = return ()
+
+-- Look at blocked thread, to see if someone needs to be woken up
+wake_up_threads :: Sched ()
+wake_up_threads = do
+  -- Check ever blocked thread to see if it has at least 1 token in
+  -- each incoming link; if so, move the thread from blocked to ready
+  tIds <- use blocked
+  forM_ tIds (\tid -> do
+                Just t <- readThread (thread_list.at tid)
+                -- All input ports should contain at least one token
+                inpQueuesEmpty <- liftS $ runSTM $ mapM isEmptyTQueue $ t^.in_ports
+                when (all not inpQueuesEmpty) $ do
+                  -- remove thread from blocked
+                  blocked %= (delete tid)
+                  -- insert into the ready queue
+                  ready   %= (++ [tid])
+                  -- Set the arrival time equal to the current simulation time
+                  time <- liftS $ getTime
+                  modifyThread (thread_list.at tid) (\t -> modifyTVar' t (activation_time .~ time))
+             )
+
+  -- Sort ready list by FIFO (i.e. arrival time)
+  --
+  -- COMMENT: the sorting method should be pluggable. It is
+  -- necessary if we want to compare different scheduling
+  -- strategies
+  readyList <- use thread_list >>= T.mapM (fmap (activation_time ^$) . liftS . runSTM . readTVar)
+  ready %= sortBy (\a b -> compare (readyList HashMap.! a)
+                                   (readyList HashMap.! b)
+                  )
+
+find_free_resource :: ThreadId -> Sched (Maybe ResourceId)
+find_free_resource thId = do
+  rt_map    <- use res_types
+  rm_map    <- use res_map
+  resIds    <- use (thread_res_allocation._at thId)
+  (Just th) <- readThread (thread_list.at thId)
+  -- The resource is choosen only among the
+  -- ones on which the task has been allocated
+  let rIdM = listToMaybe
+           $ filter
+             -- the isCompliant() check is superfluous, since the  process manager has
+             -- hopefully already allocated the threads on the compliant
+             -- resources
+             (\x -> isComplient (th^.rr) (rt_map HashMap.! x) &&
+                    (rm_map HashMap.! x) == IDLE_RES
+             )
+             resIds
+  return rIdM
 
 schedule :: Sched ()
 schedule = do
@@ -99,6 +149,7 @@ schedule = do
       maybe' resM (return ()) $ \res -> do
         -- remove from the ready list
         ready                              %= (delete th)
+        -- Execute th on res
         res_map._at res                    .= BUSY_RES
         modifyThread (thread_list.at th) (\t -> modifyTVar' t (execution_state .~ Executing))
         exec_threads.at th                 ?= res
@@ -106,49 +157,6 @@ schedule = do
         Just t <- use $ thread_list.at th
         sId    <- liftS $ getComponentId
         liftS $ threadInstance th sId t res
-
--- Look at blocked thread, to see if someone needs to be woken up
-wake_up_threads :: Sched ()
-wake_up_threads = do
-  liftS $ traceMsg $ "Waking up threads"
-  -- Check ever blocked thread to see if it has at least 1 token in
-  -- each incoming link; if so, move the thread from blocked to ready
-  tIds <- use blocked
-  forM_ tIds (\tid -> do
-                Just t <- readThread (thread_list.at tid)
-                -- All input ports should contain at least one token
-                inpQueuesEmpty <- liftS $ runSTM $ mapM isEmptyTQueue $ t^.in_ports
-                when (all not inpQueuesEmpty) $ do
-                  -- remove thread from blocked
-                  blocked %= (delete tid)
-                  -- insert into the ready queue
-                  ready   %= (++ [tid])
-                  -- Set the arrival time equal to the current simulation time
-                  time <- liftS $ getTime
-                  modifyThread (thread_list.at tid) (\t -> modifyTVar' t (activation_time .~ time))
-             )
-
-  -- Sort ready list by FIFO (i.e. arrival time)
-  readyList <- use thread_list >>= T.mapM (fmap (activation_time ^$) . liftS . runSTM . readTVar)
-  ready %= sortBy (\a b -> compare (readyList HashMap.! a)
-                                   (readyList HashMap.! b)
-                  )
-  return ()
-
-find_free_resource :: ThreadId -> Sched (Maybe ResourceId)
-find_free_resource th = do
-  rt  <- use res_types
-  rs  <- use res_map
-  thM <- readThread (thread_list.at th)
-  maybe' thM (return Nothing) $ \th -> do
-    let rC = HashMap.keys
-           $ HashMap.filter (\r -> isComplient r (th^.rr))
-             rt
-    let rM = listToMaybe
-           . HashMap.keys
-           $ HashMap.filterWithKey (\k v -> k `elem` rC && v == IDLE_RES)
-             rs
-    return rM
 
 modifyThread l f = use l >>= (maybe (return ()) (liftS . runSTM . f))
 readThread l     = use l >>= (liftS . runSTM . maybe (return Nothing) (fmap Just . readTVar))

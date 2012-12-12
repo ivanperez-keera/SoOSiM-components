@@ -53,6 +53,7 @@ library
                       SoOSiM.Components.Thread.Types
 
   build-depends:      base                 >= 4.3.1.0,
+                      containers           >= 0.5.0.0,
                       lens                 >= 3.7.0.2,
                       mtl                  >= 2.1.2,
                       SoOSiM               >= 0.2.4.0,

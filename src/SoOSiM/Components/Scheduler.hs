@@ -1,5 +1,8 @@
 module SoOSiM.Components.Scheduler
-  (module Exported)
+  ( scheduler
+  , initScheduler
+  , threadCompleted
+  )
 where
 
-import SoOSiM.Components.Scheduler.Interface as Exported
+import SoOSiM.Components.Scheduler.Interface

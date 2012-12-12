@@ -1,6 +1,10 @@
 module SoOSiM.Components.ResourceManager
-  ( module Exported
+  ( resourceManager
+  , addResource
+  , requestResources
+  , freeResources
+  , getResourceDescription
   )
 where
 
-import SoOSiM.Components.ResourceManager.Interface as Exported
+import SoOSiM.Components.ResourceManager.Interface
