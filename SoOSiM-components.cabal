@@ -10,9 +10,11 @@ maintainer:           christiaan.baaij@gmail.com
 -- copyright:
 category:             Simulation
 build-type:           Simple
-cabal-version:        >=1.8
+cabal-version:        >=1.10
 
 Extra-source-files:   README.md
+
+Data-files:           examples/example1.json
 
 source-repository head
   type: git
@@ -20,6 +22,9 @@ source-repository head
 
 library
   HS-Source-Dirs:     src
+  default-language:   Haskell2010
+  ghc-options:        -fwarn-tabs
+  Cpp-options:        -DCABAL
 
   exposed-modules:    SoOSiM.Components.ApplicationHandler
                       SoOSiM.Components.Common
@@ -52,8 +57,16 @@ library
                       SoOSiM.Components.Thread.Interface
                       SoOSiM.Components.Thread.Types
 
-  build-depends:      base                 >= 4.3.1.0,
+                      SoOSiM.Examples.Loader
+                      SoOSiM.Examples.Parser
+
+                      Paths_SoOSiM_components
+
+  build-depends:      aeson                >= 0.6.0.2,
+                      base                 >= 4.3.1.0,
+                      bytestring           >= 0.10.0.0,
                       containers           >= 0.5.0.0,
+                      filepath             >= 1.3.0.1,
                       lens                 >= 3.7.0.2,
                       mtl                  >= 2.1.2,
                       SoOSiM               >= 0.2.4.0,

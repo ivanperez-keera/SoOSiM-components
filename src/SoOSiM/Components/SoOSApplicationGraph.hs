@@ -1,4 +1,8 @@
+{-# LANGUAGE OverloadedStrings #-}
 module SoOSiM.Components.SoOSApplicationGraph where
+
+import Data.Aeson          ((.:),(.:?),(.!=),FromJSON(..),Value (..))
+import Control.Applicative ((<$>),(<*>))
 
 import SoOSiM
 import SoOSiM.Components.Common
@@ -36,6 +40,14 @@ data Vertex
   , executionTime         :: Int
   } deriving Show
 
+instance FromJSON Vertex where
+  parseJSON (Object v) =
+    Vertex <$>
+      (v .:  "id") <*>
+      (v .:  "resourceRequirements") <*>
+      (v .:? "pointerToCodeInMemory" .!= 0) <*>
+      (v .:  "executionTime")
+
 -- | This structure represents a directed edge between two vertexes,
 -- source and destination. This edge will pass tokens from one Vertex
 -- to the other. Tokens are just nameless signals, and do not contain
@@ -49,6 +61,13 @@ data Edge
   , end      :: VertexId
   , n_tokens :: Int
   } deriving Show
+
+instance FromJSON Edge where
+  parseJSON (Object v) =
+    Edge <$>
+      (v .: "nodeOut") <*>
+      (v .: "nodeIn") <*>
+      (v .: "ntokens")
 
 -- | The graph that represents an application.
 --
@@ -71,6 +90,12 @@ data ApplicationGraph
   { vertices :: [Vertex]
   , edges    :: [Edge]
   } deriving Show
+
+instance FromJSON ApplicationGraph where
+  parseJSON (Object v) =
+    ApplicationGraph <$>
+      (v .: "vertices") <*>
+      (v .: "edges")
 
 -- | returns the total number of vertexes
 numberOfVertices :: ApplicationGraph -> Int

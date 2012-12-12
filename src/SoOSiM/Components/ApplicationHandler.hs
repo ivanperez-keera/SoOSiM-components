@@ -1,6 +1,7 @@
 module SoOSiM.Components.ApplicationHandler
   ( applicationHandler
   , loadProgram
+  , addPrograms
   )
 where
 

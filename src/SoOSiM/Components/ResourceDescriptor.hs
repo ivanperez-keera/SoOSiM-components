@@ -1,4 +1,8 @@
+{-# LANGUAGE OverloadedStrings #-}
 module SoOSiM.Components.ResourceDescriptor where
+
+import Control.Applicative ((<$>),(<*>),pure)
+import Data.Aeson ((.:),FromJSON(..),Value (..))
 
 import SoOSiM
 import SoOSiM.Components.Common
@@ -14,11 +18,20 @@ data ResourceDescriptor
   , mem_size :: Int
   } deriving (Eq,Ord,Show)
 
+instance FromJSON ResourceDescriptor where
+  parseJSON (String "ANY_RES") = pure anyRes
+
 data Resource
   = Resource
   { res_id   :: ResourceId
   , res_type :: ResourceDescriptor
   }
+
+instance FromJSON Resource where
+  parseJSON (Object v) =
+    Resource <$>
+      (v .: "id") <*>
+      (v .: "type")
 
 anyRes = ResourceDescriptor ANY_ISA 0
 
