@@ -18,7 +18,8 @@ import Data.List (delete,sortBy)
 import Data.Maybe (listToMaybe)
 import qualified Data.Traversable as T
 
-import SoOSiM
+import SoOSiM hiding (traceMsg)
+import qualified SoOSiM
 import SoOSiM.Components.Common
 import SoOSiM.Components.ProcManager
 import SoOSiM.Components.ResourceDescriptor
@@ -141,7 +142,7 @@ schedule = do
   finished <- (&&) <$> (uses ready null) <*> (uses exec_threads HashMap.null)
   if finished
     then do
-      liftS $ traceMsg ("Program finished")
+      traceMsg ("Program finished")
       use pm >>= (liftS . terminateProgram)
       return False
     else do
@@ -153,7 +154,7 @@ schedule = do
       -- Find a suitable resource for the thread
       resM <- find_free_resource th
       maybe' resM (return ()) $ \res -> do
-        liftS $ traceMsg ("Starting thread " ++ show th ++ " on Node " ++ show res)
+        traceMsg ("Starting thread " ++ show th ++ " on Node " ++ show res)
         -- remove from the ready list
         ready %= (delete th)
         -- Execute th on res
@@ -177,3 +178,4 @@ schedule = do
 
 modifyThread l f = use l >>= (maybe (return ()) (liftS . runSTM . f))
 readThread l     = use l >>= (liftS . runSTM . maybe (return Nothing) (fmap Just . readTVar))
+traceMsg         = liftS . SoOSiM.traceMsg

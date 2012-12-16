@@ -18,7 +18,8 @@ import qualified Data.Map.Strict     as Map
 import Data.Maybe (fromJust)
 import qualified Data.Traversable as T
 
-import SoOSiM
+import qualified SoOSiM
+import SoOSiM hiding (traceMsg)
 import SoOSiM.Components.ApplicationHandler
 import SoOSiM.Components.Common
 import SoOSiM.Components.ResourceDescriptor
@@ -106,7 +107,7 @@ behaviour (Message (RunProgram fN) retAddr) = do
   -- Allocation algorithms. Here I just statically allocate
   -- threads to resources in the simplest possible way
   let th_all = allocate_simple threads' rc
-  lift $ traceMsg $ "ThreadAssignment: " ++ show th_all
+  traceMsg $ "ThreadAssignment: " ++ show th_all
 
   -- Another alternative allocation strategy
   -- let th_all = allocate_global threads' res
@@ -116,7 +117,7 @@ behaviour (Message (RunProgram fN) retAddr) = do
   threads'' <- T.mapM (lift . runSTM . newTVar) threads'
   pmId <- lift $ getComponentId
   sId  <- lift $ scheduler pmId
-  lift $ traceMsg $ "Starting scheduler"
+  traceMsg $ "Starting scheduler"
   lift $ initScheduler sId threads'' rc th_all
 
 behaviour (Message TerminateProgram retAddr) = do
@@ -172,3 +173,5 @@ allocate_simple threads resMap = thAll
       | isComplient r (t^.rr) = ((r,rIds ++ [rId]):rms,rId)
       | otherwise             = let (rms',rId) = assignResource t rms
                                 in  (rm:rms',rId)
+
+traceMsg = lift . SoOSiM.traceMsg

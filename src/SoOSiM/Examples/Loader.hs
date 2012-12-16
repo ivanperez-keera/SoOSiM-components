@@ -33,5 +33,5 @@ loader f = do
     traceMsg "Start the process manager"
     pmId <- processManager rmId
 
-    traceMsg "Start the example1 application"
+    traceMsg "Start the application"
     runProgram pmId f
