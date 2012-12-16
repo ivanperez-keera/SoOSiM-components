@@ -6,6 +6,8 @@ module SoOSiM.Components.Thread
   -- * Creating threads
   , threadInstance
   , newThread
+  -- * Starting and stopping
+  , startThread
   -- * Lenses
   , threadId
   , n_in

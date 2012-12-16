@@ -17,8 +17,7 @@ appHandler s@(AH_State appMap) (Message (LoadProgram fn) retAddr) = do
   respond ApplicationHandler retAddr (AH_AG $ appMap HashMap.! fn)
   yield s
 
-appHandler (AH_State _) (Message (AddApps appMap) retAddr) = do
-  respond ApplicationHandler retAddr AH_Void
+appHandler (AH_State _) (Message (AddApps appMap) retAddr) =
   yield (AH_State appMap)
 
 appHandler s _ = yield s

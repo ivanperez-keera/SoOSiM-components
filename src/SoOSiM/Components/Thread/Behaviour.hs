@@ -10,7 +10,6 @@ import Data.Maybe
 
 import SoOSiM
 import SoOSiM.Components.Common
-import SoOSiM.Components.Scheduler.Interface (threadCompleted)
 
 import SoOSiM.Components.Thread.Interface
 import SoOSiM.Components.Thread.Types
@@ -41,8 +40,7 @@ threadBehaviour ::
   -> Sim TH_State
 threadBehaviour s@(TH_State _ _ Nothing) _ = yield s
 
-threadBehaviour s _ = do
-  traceMsg "Starting computation"
+threadBehaviour s (Message TH_Start _) = do
   let ts = fromJust $ s ^. thread_state
   t <- runSTM $ readTVar ts
   case (t ^. execution_state) of
@@ -51,23 +49,30 @@ threadBehaviour s _ = do
       runSTM $ mapM_ readTQueue (t ^. in_ports)
 
       -- Execute computation
-      compute (t ^. exec_cycles) ()
+      traceMsg "Started"
+      compute ((t ^. exec_cycles) - 1) ()
+      traceMsg "Finished"
 
       -- Write to output ports
       runSTM $ mapM_ (\(_,q) -> writeTQueue q ()) (t^.out_ports)
 
       -- Signal scheduler that thread has completed
       runSTM $ modifyTVar' ts (execution_state .~ Waiting)
-      threadCompleted (s ^. sched_id) (s ^. actual_id)
-      traceMsg "Finished computation"
-      stop
+
+      yield s
 
     -- Waiting to start
     Waiting -> do
       traceMsg "Waiting"
-      return s
+      yield s
 
     -- Finished one execution cycle
     Blocked -> do
       traceMsg "Stopping"
+      yield s
+
+    Killed -> do
+      traceMsg "Killed"
       stop
+
+threadBehaviour s _ = yield s

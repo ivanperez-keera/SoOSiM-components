@@ -18,7 +18,7 @@ instance ComponentInterface ThreadIFace where
   type Receive ThreadIFace        = TH_Cmd
   type Send ThreadIFace           = TH_Msg
   initState                       = const threadIState
-  componentName (ThreadIFace tid) = ("Thread: " ++ show tid)
+  componentName (ThreadIFace tid) = ("Thread " ++ show tid)
   componentBehaviour              = const threadBehaviour
 
 -- | Create a new thread
@@ -26,7 +26,7 @@ newThread ::
   ThreadId  -- ^ ThreadId
   -> Int    -- ^ Number of cycles needed to execute
   -> Thread
-newThread tId exec = Thread tId 0 0 [] [] exec anyRes Blocked (-1) 0
+newThread tId exec = Thread tId 0 0 [] [] exec anyRes Killed (-1) 0
 
 -- | Create a new thread body / instance
 threadInstance ::
@@ -34,7 +34,12 @@ threadInstance ::
   -> ComponentId -- ^ ComponentID of the scheduler controlling the thread
   -> TVar Thread -- ^ Reference to the thread meta-data
   -> NodeId      -- ^ Node on which to instantiate the thread
+  -> Sim ComponentId
+threadInstance tid sid th nid =
+  createComponentNPS (Just nid) Nothing (Just $ TH_State tid sid (Just th)) (ThreadIFace tid)
+
+startThread ::
+  ComponentId
+  -> ThreadId
   -> Sim ()
-threadInstance tid sid th nid = do
-  _ <- createComponentNPS (Just nid) Nothing (Just $ TH_State tid sid (Just th)) (ThreadIFace tid)
-  return ()
+startThread cId tId = notify (ThreadIFace tId) cId TH_Start

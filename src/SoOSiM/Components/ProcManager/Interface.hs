@@ -25,7 +25,7 @@ processManager r = componentLookup ProcManager >>= \case
     iState = procMgrIState { _rm = r }
 
 terminateProgram :: ComponentId -> Sim ()
-terminateProgram cId = invoke ProcManager cId TerminateProgram >>= (\PM_Void -> return ())
+terminateProgram cId = notify ProcManager cId TerminateProgram
 
 runProgram :: ComponentId -> String -> Sim ()
-runProgram cId fN = invoke ProcManager cId (RunProgram fN) >>= (\PM_Void -> return ())
+runProgram cId fN = notify ProcManager cId (RunProgram fN)

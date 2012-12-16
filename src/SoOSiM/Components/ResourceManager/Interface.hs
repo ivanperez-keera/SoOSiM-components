@@ -28,13 +28,13 @@ resourceManager = do
     Just cId -> return cId
 
 addResource :: ComponentId -> ResourceId -> ResourceDescriptor -> Sim ()
-addResource cId rId rd = invoke ResourceManager cId (AddResource rId rd) >>= (\RM_Void -> return ())
+addResource cId rId rd = notify ResourceManager cId (AddResource rId rd)
 
 requestResources :: ComponentId -> AppId -> ResourceRequestList -> Sim [ResourceId]
 requestResources cId appId rl = invoke ResourceManager cId (RequestResources appId rl) >>= (\(RM_Resources r) -> return r)
 
 freeResources :: ComponentId -> AppId -> Sim ()
-freeResources cId appId = invoke ResourceManager cId (FreeResources appId) >>= (\RM_Void -> return ())
+freeResources cId appId = notify ResourceManager cId (FreeResources appId)
 
 getResourceDescription :: ComponentId -> ResourceId -> Sim (Maybe ResourceDescriptor)
 getResourceDescription cId rId = invoke ResourceManager cId (GetResourceDescription rId) >>= (\(RM_Descriptor r) -> return r)

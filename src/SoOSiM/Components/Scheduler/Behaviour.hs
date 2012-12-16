@@ -11,7 +11,7 @@ import Control.Concurrent.STM.TQueue (isEmptyTQueue)
 import Control.Concurrent.STM.TVar (modifyTVar',readTVar)
 import Control.Lens
 import Control.Monad
-import Control.Monad.State.Strict (MonadState,StateT,execStateT)
+import Control.Monad.State.Strict (MonadState,StateT(..))
 import Control.Monad.Trans.Class  (lift)
 import qualified Data.HashMap.Strict as HashMap
 import Data.List (delete,sortBy)
@@ -34,13 +34,16 @@ sched ::
   SC_State
   -> Input SC_Cmd
   -> Sim SC_State
-sched s i = execStateT (runSched $ behaviour i) s
+sched s i = do
+  (c,s') <- runStateT (runSched $ behaviour i) s
+  if c then return s'
+       else yield  s'
 
 liftS = Sched . lift
 
 behaviour ::
   Input SC_Cmd
-  -> Sched ()
+  -> Sched Bool
 behaviour (Message (Init tl res th_all) retAddr) = do
   thread_list .= tl
   -- Initializes all resources
@@ -49,34 +52,35 @@ behaviour (Message (Init tl res th_all) retAddr) = do
         ) res
 
   -- all threads are initially blocked
-  blocked .= (HashMap.keys tl)
-
+  blocked               .= (HashMap.keys tl)
   thread_res_allocation .= th_all
-
-  liftS $ respond Scheduler retAddr SC_Void
 
   -- Ready! Now we have to call schedule for the first time
   schedule
 
-
-behaviour (Message (ThreadCompleted th) retAddr) = do
-  liftS $ traceMsg $ "Thread " ++ show th ++ " has finished."
-  -- Block the thread
-  modifyThread (thread_list.at th) (\t -> modifyTVar' t (execution_state .~ Blocked))
-  -- Get the resource where it was executing
-  (Just res) <- use (exec_threads.at th)
-  -- Remove the thread from the exec_threads list
-  exec_threads.at th .= Nothing
-
-  -- Signal that the resource is free
-  res_map._at res .= IDLE_RES
-  -- Insert thread 'th' into the blocked vector
-  blocked %= (++ [th])
-
-  liftS $ respond Scheduler retAddr SC_Void
+behaviour _ = do
+  -- Check which threads completed
+  tids <- uses thread_list HashMap.keys
+  mapM_ thread_completed tids
+  -- Schedule threads
   schedule
 
-behaviour _ = return ()
+thread_completed :: ThreadId -> Sched ()
+thread_completed th = do
+  Just t <- readThread (thread_list.at th)
+  when (t ^. execution_state == Waiting) $ do
+    -- Block the thread
+    modifyThread (thread_list.at th) (\t -> modifyTVar' t (execution_state .~ Blocked))
+    -- Get the resource where it was executing
+    (Just res) <- use (exec_threads.at th)
+    -- Remove the thread from the exec_threads list
+    exec_threads.at th .= Nothing
+
+    -- Signal that the resource is free
+    res_map._at res .= IDLE_RES
+    -- Insert thread 'th' into the blocked vector
+    blocked %= (++ [th])
+
 
 -- Look at blocked thread, to see if someone needs to be woken up
 wake_up_threads :: Sched ()
@@ -127,7 +131,7 @@ find_free_resource thId = do
              resIds
   return rIdM
 
-schedule :: Sched ()
+schedule :: Sched Bool
 schedule = do
   wake_up_threads
 
@@ -139,24 +143,37 @@ schedule = do
     then do
       liftS $ traceMsg ("Program finished")
       use pm >>= (liftS . terminateProgram)
+      return False
     else do
     -- Otherwise, start executing threads on resources
     -- Visit the read list in order of priority
     tIds <- use ready
+    rm_map <- use res_map
     forM_ tIds $ \th -> do
       -- Find a suitable resource for the thread
       resM <- find_free_resource th
       maybe' resM (return ()) $ \res -> do
+        liftS $ traceMsg ("Starting thread " ++ show th ++ " on Node " ++ show res)
         -- remove from the ready list
-        ready                              %= (delete th)
+        ready %= (delete th)
         -- Execute th on res
-        res_map._at res                    .= BUSY_RES
-        modifyThread (thread_list.at th) (\t -> modifyTVar' t (execution_state .~ Executing))
-        exec_threads.at th                 ?= res
-        -- Start the tread on the node
-        Just t <- use $ thread_list.at th
-        sId    <- liftS $ getComponentId
-        liftS $ threadInstance th sId t res
+        res_map._at res .= BUSY_RES
+        exec_threads.at th ?= res
+
+        -- create thread instance on the node if it was killed
+        Just t <- use (thread_list.at th)
+        t' <- liftS . runSTM $ readTVar t
+        when (t'^.execution_state == Killed) $ do
+          sId <- liftS $ getComponentId
+          cId <- liftS $ threadInstance th sId t res
+          components.at th ?= cId
+
+        -- Start the tread
+        modifyThread (thread_list.at th)
+          (\t -> modifyTVar' t (execution_state .~ Executing))
+        use (components.at th) >>=
+          maybe (return ()) (\cId -> liftS $ startThread cId th)
+    return True
 
 modifyThread l f = use l >>= (maybe (return ()) (liftS . runSTM . f))
 readThread l     = use l >>= (liftS . runSTM . maybe (return Nothing) (fmap Just . readTVar))

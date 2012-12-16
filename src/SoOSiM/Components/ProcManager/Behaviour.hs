@@ -116,17 +116,15 @@ behaviour (Message (RunProgram fN) retAddr) = do
   threads'' <- T.mapM (lift . runSTM . newTVar) threads'
   pmId <- lift $ getComponentId
   sId  <- lift $ scheduler pmId
+  lift $ traceMsg $ "Starting scheduler"
   lift $ initScheduler sId threads'' rc th_all
-
-  lift $ respond ProcManager retAddr PM_Void
 
 behaviour (Message TerminateProgram retAddr) = do
   -- The program has completed, free the resources
   pmId <- lift $ getComponentId
   rId  <- use rm
   res  <- lift $ freeResources rId pmId
-
-  lift $ respond ProcManager retAddr PM_Void
+  lift $ stopSim
 
 behaviour _ = return ()
 

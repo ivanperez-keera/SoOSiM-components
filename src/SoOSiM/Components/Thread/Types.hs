@@ -7,7 +7,8 @@ import Control.Concurrent.STM.TQueue
 import SoOSiM.Components.Common
 import SoOSiM.Components.ResourceDescriptor
 
-data ThreadState = Blocked | Waiting | Executing
+data ThreadState = Blocked | Waiting | Executing | Killed
+  deriving Eq
 
 data Thread
   = Thread

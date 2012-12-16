@@ -12,7 +12,7 @@ import SoOSiM.Components.ResourceDescriptor
 import SoOSiM.Components.Thread
 
 data ResStatus = IDLE_RES | BUSY_RES
-  deriving Eq
+  deriving (Eq,Show)
 
 data SC_State
   = SC_State
@@ -37,10 +37,12 @@ data SC_State
     -- | This associate each thread with the set of resources on which it can be executed
     -- this map is prepared by the Process Manager
   , _thread_res_allocation :: HashMap ThreadId [ResourceId]
+    -- | This associates each threadId to a componentId
+  , _components   :: HashMap ThreadId ComponentId
   }
 
 schedIState :: SC_State
-schedIState = SC_State (-1) empty [] [] empty empty empty empty
+schedIState = SC_State (-1) empty [] [] empty empty empty empty empty
 
 makeLenses ''SC_State
 

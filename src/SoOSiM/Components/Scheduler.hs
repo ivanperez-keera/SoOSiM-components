@@ -1,7 +1,6 @@
 module SoOSiM.Components.Scheduler
   ( scheduler
   , initScheduler
-  , threadCompleted
   )
 where
 

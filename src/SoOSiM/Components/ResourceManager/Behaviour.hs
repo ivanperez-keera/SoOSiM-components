@@ -18,7 +18,6 @@ behaviour ::
 behaviour s (Message (AddResource rId rd) retAddr) = do
   let rs = HashMap.insert rId rd (resources s)
       s' = s { resources = rs, free_resources = rId : (free_resources s) }
-  respond ResourceManager retAddr RM_Void
   yield s'
 
 behaviour s (Message (RequestResources appId rsList) retAddr) = do
@@ -33,7 +32,6 @@ behaviour s (Message (RequestResources appId rsList) retAddr) = do
 behaviour s (Message (FreeResources appId) retAddr) = do
   let (freed,busy') = first (map fst) $ partition ((== appId) . snd) (busy_resources s)
       s'            = s { free_resources = freed ++ (free_resources s), busy_resources = busy' }
-  respond ResourceManager retAddr RM_Void
   yield s'
 
 behaviour s (Message (GetResourceDescription rId) retAddr) = do

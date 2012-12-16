@@ -39,11 +39,4 @@ initScheduler ::
   -> HashMap ThreadId [ResourceId]
   -> Sim ()
 initScheduler cId th res th_all =
-  invokeAsync Scheduler cId (Init th res th_all) ignore
-
-threadCompleted ::
-  ComponentId
-  -> ThreadId
-  -> Sim ()
-threadCompleted cId th =
-  invokeAsync Scheduler cId (ThreadCompleted th) ignore
+  notify Scheduler cId (Init th res th_all)

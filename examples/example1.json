@@ -20,7 +20,7 @@
     , "edges" :
         [ { "nodeOut" : 1
           , "nodeIn"  : 2
-          , "ntokens" : 4
+          , "ntokens" : 0
           }
         , { "nodeOut" : 1
           , "nodeIn"  : 3
@@ -33,6 +33,10 @@
         , { "nodeOut" : 3
           , "nodeIn"  : 4
           , "ntokens" : 0
+          }
+        , { "nodeOut" : -1
+          , "nodeIn"  : 1
+          , "ntokens" : 4
           }
         ]
     }

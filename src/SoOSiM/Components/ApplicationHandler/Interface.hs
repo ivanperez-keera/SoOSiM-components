@@ -26,7 +26,7 @@ applicationHandler = do
     Just cId -> return cId
 
 addPrograms :: ComponentId -> HashMap String ApplicationGraph -> Sim ()
-addPrograms cId appMap = invoke ApplicationHandler cId (AddApps appMap) >>= (\AH_Void -> return ())
+addPrograms cId appMap = notify ApplicationHandler cId (AddApps appMap)
 
 loadProgram :: ComponentId -> String -> Sim ApplicationGraph
 loadProgram cId fN = invoke ApplicationHandler cId (LoadProgram fN) >>= (\(AH_AG ag) -> return ag)
