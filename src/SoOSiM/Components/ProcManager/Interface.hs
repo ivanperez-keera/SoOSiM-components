@@ -1,4 +1,3 @@
-{-# LANGUAGE LambdaCase   #-}
 {-# LANGUAGE TypeFamilies #-}
 module SoOSiM.Components.ProcManager.Interface where
 
@@ -18,7 +17,7 @@ instance ComponentInterface ProcManager where
 
 -- | Start the processmanager
 processManager :: ComponentId -> Sim ComponentId
-processManager r = componentLookup ProcManager >>= \case
+processManager r = componentLookup ProcManager >>= \x -> case x of
     Nothing  -> createComponentNPS Nothing Nothing (Just iState) ProcManager
     Just cId -> return cId
   where

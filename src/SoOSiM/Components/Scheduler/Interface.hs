@@ -1,4 +1,3 @@
-{-# LANGUAGE LambdaCase   #-}
 {-# LANGUAGE TypeFamilies #-}
 module SoOSiM.Components.Scheduler.Interface where
 
@@ -26,7 +25,7 @@ instance ComponentInterface Scheduler where
 scheduler ::
   ComponentId
   -> Sim ComponentId
-scheduler p = componentLookup Scheduler >>= \case
+scheduler p = componentLookup Scheduler >>= \x -> case x of
     Nothing  -> createComponentNPS Nothing Nothing (Just iState) Scheduler
     Just cId -> return cId
   where

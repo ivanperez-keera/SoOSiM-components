@@ -1,4 +1,3 @@
-{-# LANGUAGE LambdaCase   #-}
 {-# LANGUAGE TypeFamilies #-}
 module SoOSiM.Components.ApplicationHandler.Interface where
 
@@ -21,7 +20,7 @@ instance ComponentInterface ApplicationHandler where
 
 applicationHandler :: Sim ComponentId
 applicationHandler = do
-  componentLookup ApplicationHandler >>= \case
+  componentLookup ApplicationHandler >>= \x -> case x of
     Nothing  -> createComponent ApplicationHandler
     Just cId -> return cId
 

@@ -1,4 +1,3 @@
-{-# LANGUAGE LambdaCase   #-}
 {-# LANGUAGE TypeFamilies #-}
 module SoOSiM.Components.ResourceManager.Interface where
 
@@ -23,7 +22,7 @@ instance ComponentInterface ResourceManager where
 
 resourceManager :: Sim ComponentId
 resourceManager = do
-  componentLookup ResourceManager >>= \case
+  componentLookup ResourceManager >>= \x -> case x of
     Nothing  -> createComponent ResourceManager
     Just cId -> return cId
 

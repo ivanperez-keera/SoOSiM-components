@@ -1,4 +1,3 @@
-{-# LANGUAGE LambdaCase    #-}
 {-# LANGUAGE TupleSections #-}
 module SoOSiM.Components.ProcManager.Behaviour
   (procMgr)
@@ -14,7 +13,7 @@ import Control.Monad.State.Strict
 import qualified Data.Foldable       as F
 import           Data.HashMap.Strict (HashMap)
 import qualified Data.HashMap.Strict as HashMap
-import qualified Data.Map.Strict     as Map
+import qualified Data.Map            as Map
 import Data.Maybe (fromJust)
 import qualified Data.Traversable as T
 
@@ -149,7 +148,7 @@ allocate_simple threads resMap = thAll
     resMapI = Map.toList $ foldl
                 (\m (rId,r) ->
                   Map.alter
-                    (\case
+                    (\x -> case x of
                       Nothing -> Just [rId]
                       Just rs -> Just (rId:rs)
                     ) r m
