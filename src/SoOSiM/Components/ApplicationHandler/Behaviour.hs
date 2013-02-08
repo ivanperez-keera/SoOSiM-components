@@ -13,11 +13,11 @@ appHandler ::
   AH_State
   -> Input AH_Cmd
   -> Sim AH_State
-appHandler s@(AH_State appMap) (Message (LoadProgram fn) retAddr) = do
+appHandler s@(AH_State appMap) (Message _ (LoadProgram fn) retAddr) = do
   respond ApplicationHandler retAddr (AH_AG $ appMap HashMap.! fn)
   yield s
 
-appHandler (AH_State _) (Message (AddApps appMap) retAddr) =
+appHandler (AH_State _) (Message _ (AddApps appMap) retAddr) =
   yield (AH_State appMap)
 
 appHandler s _ = yield s

@@ -45,7 +45,7 @@ liftS = Sched . lift
 behaviour ::
   Input SC_Cmd
   -> Sched Bool
-behaviour (Message (Init tl res th_all) retAddr) = do
+behaviour (Message _ (Init tl res th_all) retAddr) = do
   thread_list .= tl
   -- Initializes all resources
   mapM_ (\x -> do res_map.at (fst x)   ?= IDLE_RES
@@ -108,7 +108,7 @@ wake_up_threads = do
   -- COMMENT: the sorting method should be pluggable. It is
   -- necessary if we want to compare different scheduling
   -- strategies
-  readyList <- use thread_list >>= T.mapM (fmap (activation_time ^$) . liftS . runSTM . readTVar)
+  readyList <- use thread_list >>= T.mapM (fmap (^. activation_time) . liftS . runSTM . readTVar)
   ready %= sortBy (\a b -> compare (readyList HashMap.! a)
                                    (readyList HashMap.! b)
                   )

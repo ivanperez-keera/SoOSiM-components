@@ -40,7 +40,7 @@ threadBehaviour ::
   -> Sim TH_State
 threadBehaviour s@(TH_State _ _ Nothing) _ = yield s
 
-threadBehaviour s (Message TH_Start _) = do
+threadBehaviour s (Message _ TH_Start _) = do
   let ts = fromJust $ s ^. thread_state
   t <- runSTM $ readTVar ts
   case (t ^. execution_state) of
@@ -49,9 +49,9 @@ threadBehaviour s (Message TH_Start _) = do
       runSTM $ mapM_ readTQueue (t ^. in_ports)
 
       -- Execute computation
-      traceMsg "Started"
+      traceMsgTag "Started" ("<T" ++ show (t ^. threadId) ++ "-S>")
       compute ((t ^. exec_cycles) - 1) ()
-      traceMsg "Finished"
+      traceMsgTag "Finished" ("<T" ++ show (t ^. threadId) ++ "-E>")
 
       -- Write to output ports
       runSTM $ mapM_ (\(_,q) -> writeTQueue q ()) (t^.out_ports)

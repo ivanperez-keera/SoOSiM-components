@@ -42,7 +42,7 @@ type ProcMgrM a = StateT PM_State Sim a
 behaviour ::
   Input PM_Cmd
   -> ProcMgrM ()
-behaviour (Message (RunProgram fN) retAddr) = do
+behaviour (Message _ (RunProgram fN) retAddr) = do
   -- invokes the Application Handler
   thread_graph <- lift $ applicationHandler >>= flip loadProgram fN
 
@@ -119,7 +119,7 @@ behaviour (Message (RunProgram fN) retAddr) = do
   traceMsg $ "Starting scheduler"
   lift $ initScheduler sId threads'' rc th_all
 
-behaviour (Message TerminateProgram retAddr) = do
+behaviour (Message _ TerminateProgram retAddr) = do
   -- The program has completed, free the resources
   pmId <- lift $ getComponentId
   rId  <- use rm
