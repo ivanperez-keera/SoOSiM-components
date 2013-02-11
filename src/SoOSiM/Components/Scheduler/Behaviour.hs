@@ -13,6 +13,7 @@ import Control.Lens
 import Control.Monad
 import Control.Monad.State.Strict (MonadState,StateT(..))
 import Control.Monad.Trans.Class  (lift)
+import Data.HashMap.Strict (HashMap)
 import qualified Data.HashMap.Strict as HashMap
 import Data.List (delete,sortBy)
 import Data.Maybe (listToMaybe)
@@ -84,8 +85,8 @@ thread_completed th = do
 
 
 -- Look at blocked thread, to see if someone needs to be woken up
-wake_up_threads :: Sched ()
-wake_up_threads = do
+wake_up_threads :: (Thread -> Thread -> Ordering) -> Sched ()
+wake_up_threads sortingMethod = do
   -- Check ever blocked thread to see if it has at least 1 token in
   -- each incoming link; if so, move the thread from blocked to ready
   tIds <- use blocked
@@ -103,15 +104,17 @@ wake_up_threads = do
                   modifyThread (thread_list.at tid) (\t -> modifyTVar' t (activation_time .~ time))
              )
 
-  -- Sort ready list by FIFO (i.e. arrival time)
-  --
-  -- COMMENT: the sorting method should be pluggable. It is
-  -- necessary if we want to compare different scheduling
-  -- strategies
-  readyList <- use thread_list >>= T.mapM (fmap (^. activation_time) . liftS . runSTM . readTVar)
-  ready %= sortBy (\a b -> compare (readyList HashMap.! a)
-                                   (readyList HashMap.! b)
-                  )
+  threads <- use thread_list >>= T.mapM (liftS . runSTM . readTVar)
+  ready %= sortBy (pluginSortMethod threads sortingMethod)
+
+pluginSortMethod ::
+  HashMap ThreadId Thread
+  -> (Thread -> Thread -> Ordering)
+  -> ThreadId
+  -> ThreadId
+  -> Ordering
+pluginSortMethod tMap orderingMethod idA idB =
+  orderingMethod (tMap HashMap.! idA) (tMap HashMap.! idB)
 
 find_free_resource :: ThreadId -> Sched (Maybe ResourceId)
 find_free_resource thId = do
@@ -132,9 +135,14 @@ find_free_resource thId = do
              resIds
   return rIdM
 
+-- Sort ready list by FIFO (i.e. arrival time)
+byArrivalTime :: Thread -> Thread -> Ordering
+byArrivalTime t1 t2 = compare (t1 ^. activation_time) (t2 ^. activation_time)
+
 schedule :: Sched Bool
 schedule = do
-  wake_up_threads
+  -- Sort ready list according to given method
+  wake_up_threads byArrivalTime
 
   -- If after wake up all threads are blocked, and nobody is
   -- executing, then there is nothing else to do (ALL TOKENS HAVE BEEN
