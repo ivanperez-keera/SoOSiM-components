@@ -1,5 +1,6 @@
 module SoOSiM.Components.ProcManager
   ( processManager
+  , createProcessManager
   , runProgram
   , terminateProgram
   )

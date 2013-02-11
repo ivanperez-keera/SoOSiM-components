@@ -14,13 +14,14 @@ import qualified Data.Foldable       as F
 import           Data.HashMap.Strict (HashMap)
 import qualified Data.HashMap.Strict as HashMap
 import qualified Data.Map            as Map
-import Data.Maybe (fromJust)
+import Data.Maybe (fromJust,mapMaybe)
 import qualified Data.Traversable as T
 
 import qualified SoOSiM
 import SoOSiM hiding (traceMsg)
 import SoOSiM.Components.ApplicationHandler
 import SoOSiM.Components.Common
+import SoOSiM.Components.PeriodicIO
 import SoOSiM.Components.ResourceDescriptor
 import SoOSiM.Components.ResourceManager
 import SoOSiM.Components.ResourceManager.Types
@@ -35,7 +36,7 @@ procMgr ::
   PM_State
   -> Input PM_Cmd
   -> Sim PM_State
-procMgr s i = execStateT (behaviour i) s
+procMgr s i = execStateT (behaviour i) s >>= yield
 
 type ProcMgrM a = StateT PM_State Sim a
 
@@ -46,27 +47,6 @@ behaviour (Message _ (RunProgram fN) retAddr) = do
   -- invokes the Application Handler
   thread_graph <- lift $ applicationHandler >>= flip loadProgram fN
 
-  -- Now we have to contact the Resource Manager
-
-  -- prepares a list of resource requirements,
-  -- for each resource description this list contains
-  -- the number of desired resources
-  let rl = prepareResourceRequestListSimple thread_graph
-
-  -- the resource manager for this Process manager should be
-  -- uniquely identified. here I am assuming that we have a
-  -- singleton implementation of the resource manager for this file:
-  -- function instance() will locate the resource manager for this
-  -- instance of the process manager.
-  rId  <- use rm
-  pmId <- lift $ getComponentId
-  res  <- lift $ requestResources rId pmId rl
-
-  -- Now, if necessary I should allocate threads to resources. in
-  -- this first sample implementation, I ignore the content of the
-  -- resource descriptors, and I assume that all thread and
-  -- resources have the correct ISA.
-
   -- Create all threads
   let threads = HashMap.fromList
               $ map (\v -> (v_id v, newThread (v_id v) (executionTime v)))
@@ -74,10 +54,12 @@ behaviour (Message _ (RunProgram fN) retAddr) = do
 
   tbqueues <- lift $ runSTM $ replicateM (length $ edges thread_graph) newTQueue
 
+  startTime <- lift $ getTime
+
   -- Make connections
   (threads',[]) <- F.foldrM
          (\e (t,(q:qs)) -> do
-            lift $ runSTM $ replicateM (n_tokens e) (writeTQueue q ())
+            lift $ runSTM $ replicateM (n_tokens e) (writeTQueue q startTime)
                 -- Create the in_port of the destination thread, and
                 -- initialize it with the number of tokens
             let t'  = if (end e < 0)
@@ -94,22 +76,55 @@ behaviour (Message _ (RunProgram fN) retAddr) = do
          (threads,tbqueues)
        $ edges thread_graph
 
-  -- Now initialize the scheduler, passing the list of
-  -- threads, the list of resources, and the mapping
+  (th_all,rc) <- untilJust $ do
+    -- Now we have to contact the Resource Manager
 
-  -- create the list of resources
-  rc <- mapM (\x ->
-                do d <- use rm >>= (\rId -> lift $ getResourceDescription rId x)
-                   return (x,fromJust d)
-             ) res
+    -- prepares a list of resource requirements,
+    -- for each resource description this list contains
+    -- the number of desired resources
+    let rl = prepareResourceRequestListSimple thread_graph
 
-  -- Allocation algorithms. Here I just statically allocate
-  -- threads to resources in the simplest possible way
-  let th_all = allocate_simple threads' rc
+    -- the resource manager for this Process manager should be
+    -- uniquely identified. here I am assuming that we have a
+    -- singleton implementation of the resource manager for this file:
+    -- function instance() will locate the resource manager for this
+    -- instance of the process manager.
+    rId  <- use rm
+    pmId <- lift $ getComponentId
+    res  <- lift $ requestResources rId pmId rl
+
+    -- Now, if necessary I should allocate threads to resources. in
+    -- this first sample implementation, I ignore the content of the
+    -- resource descriptors, and I assume that all thread and
+    -- resources have the correct ISA.
+
+    -- create the list of resources
+    rc <- mapM (\x ->
+                  do d <- use rm >>= (\rId -> lift $ getResourceDescription rId x)
+                     return (x,fromJust d)
+               ) res
+
+    -- Allocation algorithms. Here I just statically allocate
+    -- threads to resources in the simplest possible way
+    let th_allM = allocate_simple threads' rc
+
+    -- Another alternative allocation strategy
+    -- let th_allM = allocate_global threads' res
+    return $ fmap (,rc) th_allM
+
   traceMsg $ "ThreadAssignment: " ++ show th_all
 
-  -- Another alternative allocation strategy
-  -- let th_all = allocate_global threads' res
+  -- Instantiate periodic edges
+  let periodicEdges = mapMaybe (\(e,q) -> case e of
+                                  (Edge _ _ _ Nothing _)      -> Nothing
+                                  (Edge _ _ _ (Just (p,n)) _) -> Just (q,0,p,n)
+                               )
+                    $ zip (edges thread_graph) tbqueues
+
+  unless (null periodicEdges) $ do
+    let pState = PeriodicIO (periodicEdges,fN)
+    lift $ SoOSiM.createComponentNPS Nothing Nothing (Just pState) pState
+    return ()
 
   -- Now initialize the scheduler, passing the list of
   -- threads, and the list of resources
@@ -117,14 +132,14 @@ behaviour (Message _ (RunProgram fN) retAddr) = do
   pmId <- lift $ getComponentId
   sId  <- lift $ scheduler pmId
   traceMsg $ "Starting scheduler"
-  lift $ initScheduler sId threads'' rc th_all
+  lift $ initScheduler sId threads'' rc th_all (schedulerSort thread_graph) fN
 
 behaviour (Message _ TerminateProgram retAddr) = do
   -- The program has completed, free the resources
   pmId <- lift $ getComponentId
   rId  <- use rm
   res  <- lift $ freeResources rId pmId
-  lift $ stopSim
+  return ()
 
 behaviour _ = return ()
 
@@ -141,7 +156,7 @@ prepareResourceRequestListSimple ag = rl
 allocate_simple ::
   HashMap ThreadId Thread
   -> [(ResourceId,ResourceDescriptor)]
-  -> (HashMap ThreadId [ResourceId])
+  -> Maybe (HashMap ThreadId [ResourceId])
 allocate_simple threads resMap = thAll
   where
     -- Build the inverse of resMap
@@ -155,22 +170,32 @@ allocate_simple threads resMap = thAll
                 ) Map.empty resMap
 
     -- Load-balance resource assignment
-    thAll   = snd $ T.mapAccumL
-                (\m t -> second (:[]) $ assignResource t m)
+    thAll   = T.sequence $ snd $ T.mapAccumL
+                (\m t -> second (fmap (:[])) $ assignResource t m)
                 resMapI
                 threads
 
     assignResource ::
       Thread
       -> [(ResourceDescriptor,[ResourceId])]
-      -> ([(ResourceDescriptor,[ResourceId])],ResourceId)
-    assignResource t [] = error "No assignable resource found"
+      -> ([(ResourceDescriptor,[ResourceId])],Maybe ResourceId)
+    assignResource t [] = ([], Nothing)
     assignResource t (rm@(r,(rId:rIds)):rms)
       -- If a compatible resource is found, assign the resource
       -- and rotate the resourceId list to balance the assignment of
       -- threads to resources
-      | isComplient r (t^.rr) = ((r,rIds ++ [rId]):rms,rId)
+      | isComplient r (t^.rr) = ((r,rIds ++ [rId]):rms,Just rId)
       | otherwise             = let (rms',rId) = assignResource t rms
                                 in  (rm:rms',rId)
 
 traceMsg = lift . SoOSiM.traceMsg
+
+untilJust ::
+  Monad m
+  => (m (Maybe a))
+  -> m a
+untilJust mf = do
+  aM <- mf
+  case aM of
+    Just a  -> return a
+    Nothing -> untilJust mf

@@ -13,15 +13,17 @@ import Control.Lens
 import Control.Monad
 import Control.Monad.State.Strict (MonadState,StateT(..))
 import Control.Monad.Trans.Class  (lift)
+import Data.Char
 import Data.HashMap.Strict (HashMap)
 import qualified Data.HashMap.Strict as HashMap
 import Data.List (delete,sortBy)
-import Data.Maybe (listToMaybe)
+import Data.Maybe (listToMaybe,isNothing)
 import qualified Data.Traversable as T
 
 import SoOSiM hiding (traceMsg,traceMsgTag)
 import qualified SoOSiM
 import SoOSiM.Components.Common
+import SoOSiM.Components.PeriodicIO
 import SoOSiM.Components.ProcManager
 import SoOSiM.Components.ResourceDescriptor
 import SoOSiM.Components.Thread
@@ -46,19 +48,26 @@ liftS = Sched . lift
 behaviour ::
   Input SC_Cmd
   -> Sched Bool
-behaviour (Message _ (Init tl res th_all) retAddr) = do
+behaviour (Message _ (Init tl res th_all smM an) retAddr) = do
   thread_list .= tl
   -- Initializes all resources
   mapM_ (\x -> do res_map.at (fst x)   ?= IDLE_RES
                   res_types.at (fst x) ?= (snd x)
         ) res
 
+  appName .= an
+
   -- all threads are initially blocked
   blocked               .= (HashMap.keys tl)
   thread_res_allocation .= th_all
 
+  sortingMethod         .= (maybe' smM byArrivalTime $
+                              (\sm -> case map toLower sm of
+                                  "fifo" -> byArrivalTime
+                                  _      -> error $ "Non-existent scheduling method: " ++ sm
+                              ))
+
   -- Ready! Now we have to call schedule for the first time
-  traceMsgTag "Running scheduler" "SS"
   schedule
 
 behaviour _ = do
@@ -86,8 +95,8 @@ thread_completed th = do
 
 
 -- Look at blocked thread, to see if someone needs to be woken up
-wake_up_threads :: (Thread -> Thread -> Ordering) -> Sched ()
-wake_up_threads sortingMethod = do
+wake_up_threads :: Sched ()
+wake_up_threads = do
   -- Check ever blocked thread to see if it has at least 1 token in
   -- each incoming link; if so, move the thread from blocked to ready
   tIds <- use blocked
@@ -106,16 +115,8 @@ wake_up_threads sortingMethod = do
              )
 
   threads <- use thread_list >>= T.mapM (liftS . runSTM . readTVar)
-  ready %= sortBy (pluginSortMethod threads sortingMethod)
-
-pluginSortMethod ::
-  HashMap ThreadId Thread
-  -> (Thread -> Thread -> Ordering)
-  -> ThreadId
-  -> ThreadId
-  -> Ordering
-pluginSortMethod tMap orderingMethod idA idB =
-  orderingMethod (tMap HashMap.! idA) (tMap HashMap.! idB)
+  sm      <- use sortingMethod
+  ready %= sortBy (\idA idB -> sm (threads HashMap.! idA) (threads HashMap.! idB))
 
 find_free_resource :: ThreadId -> Sched (Maybe ResourceId)
 find_free_resource thId = do
@@ -136,22 +137,22 @@ find_free_resource thId = do
              resIds
   return rIdM
 
--- Sort ready list by FIFO (i.e. arrival time)
-byArrivalTime :: Thread -> Thread -> Ordering
-byArrivalTime t1 t2 = compare (_activation_time t1) (_activation_time t2)
-
 schedule :: Sched Bool
 schedule = do
   -- Sort ready list according to given method
-  wake_up_threads byArrivalTime
+  wake_up_threads
 
   -- If after wake up all threads are blocked, and nobody is
   -- executing, then there is nothing else to do (ALL TOKENS HAVE BEEN
   -- CONSUMED, NOTHING ELSE TO DO)
-  finished <- (&&) <$> (uses ready null) <*> (uses exec_threads HashMap.null)
+  finished <- and <$> T.sequenceA [ uses ready null
+                                  , uses exec_threads HashMap.null
+                                  , use  appName >>= (\n -> fmap isNothing $ liftS (componentLookup (PeriodicIO (undefined,n))))
+                                  ]
   if finished
     then do
-      traceMsgTag "Program finished" "SE"
+      traceMsg "Program finished"
+      killThreads
       use pm >>= (liftS . terminateProgram)
       return False
     else do
@@ -159,11 +160,12 @@ schedule = do
     -- Visit the read list in order of priority
     tIds <- use ready
     rm_map <- use res_map
+    aN <- use appName
     forM_ tIds $ \th -> do
       -- Find a suitable resource for the thread
       resM <- find_free_resource th
-      maybe' resM (return ()) $ \res -> do
-        traceMsg ("Starting thread " ++ show th ++ " on Node " ++ show res)
+      maybe' resM (traceMsgTag ("Thread " ++ show th ++ " is waiting") ("T" ++ show th ++ "_" ++ aN ++ "-W")) $ \res -> do
+        traceMsgTag ("Starting thread " ++ show th ++ " on Node " ++ show res) ("T" ++ show th ++ "_" ++ aN ++ "-S")
         -- remove from the ready list
         ready %= (delete th)
         -- Execute th on res
@@ -175,15 +177,21 @@ schedule = do
         t' <- liftS . runSTM $ readTVar t
         when (t'^.execution_state == Killed) $ do
           sId <- liftS $ getComponentId
-          cId <- liftS $ threadInstance th sId t res
+          cId <- liftS $ threadInstance th sId t res aN
           components.at th ?= cId
 
         -- Start the tread
         modifyThread (thread_list.at th)
           (\t -> modifyTVar' t (execution_state .~ Executing))
         use (components.at th) >>=
-          maybe (return ()) (\cId -> liftS $ startThread cId th)
+          maybe (return ()) (\cId -> liftS $ startThread cId aN th)
     return True
+
+killThreads :: Sched ()
+killThreads = do
+  aN  <- use appName
+  tcs <- fmap HashMap.toList $ use components
+  forM_ tcs $ \(th,cId) -> liftS $ killThread cId aN th
 
 modifyThread l f = use l >>= (maybe (return ()) (liftS . runSTM . f))
 readThread l     = use l >>= (liftS . runSTM . maybe (return Nothing) (fmap Just . readTVar))

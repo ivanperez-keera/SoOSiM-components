@@ -36,6 +36,8 @@ initScheduler ::
   -> HashMap ThreadId (TVar Thread)
   -> [(ResourceId,ResourceDescriptor)]
   -> HashMap ThreadId [ResourceId]
+  -> Maybe String
+  -> String
   -> Sim ()
-initScheduler cId th res th_all =
-  notify Scheduler cId (Init th res th_all)
+initScheduler cId th res th_all smM an =
+  notify Scheduler cId (Init th res th_all smM an)

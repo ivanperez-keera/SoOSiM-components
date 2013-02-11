@@ -13,10 +13,11 @@ data TH_State
   { _actual_id    :: ThreadId
   , _sched_id     :: ComponentId
   , _thread_state :: Maybe (TVar Thread)
+  , _appName      :: String
   }
 
 
-data TH_Cmd = TH_Start
+data TH_Cmd = TH_Start | TH_Stop
 data TH_Msg
 
 instance Typeable TH_Cmd

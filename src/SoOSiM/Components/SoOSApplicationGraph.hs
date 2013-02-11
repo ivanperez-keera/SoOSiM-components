@@ -60,6 +60,8 @@ data Edge
   { start    :: VertexId
   , end      :: VertexId
   , n_tokens :: Int
+  , periodic :: Maybe (Int,Int)
+  , deadline :: Maybe Int
   } deriving Show
 
 instance FromJSON Edge where
@@ -67,7 +69,9 @@ instance FromJSON Edge where
     Edge <$>
       (v .: "nodeOut") <*>
       (v .: "nodeIn") <*>
-      (v .: "ntokens")
+      (v .: "ntokens") <*>
+      (v .:? "periodic") <*>
+      (v .:? "deadline")
 
 -- | The graph that represents an application.
 --
@@ -87,16 +91,20 @@ instance FromJSON Edge where
 -- Are these libraries in Haskell that we can easily re-use?
 data ApplicationGraph
   = ApplicationGraph
-  { vertices :: [Vertex]
-  , edges    :: [Edge]
+  { appName       :: String
+  , schedulerSort :: Maybe String
+  , vertices      :: [Vertex]
+  , edges         :: [Edge]
   } deriving Show
 
 instance FromJSON ApplicationGraph where
   parseJSON (Object v) =
     ApplicationGraph <$>
+      (v .: "name") <*>
+      (v .:? "scheduler") <*>
       (v .: "vertices") <*>
       (v .: "edges")
 
 -- | returns the total number of vertexes
 numberOfVertices :: ApplicationGraph -> Int
-numberOfVertices (ApplicationGraph v _) = length v
+numberOfVertices (ApplicationGraph _ _ v _) = length v

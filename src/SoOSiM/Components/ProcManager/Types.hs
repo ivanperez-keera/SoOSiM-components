@@ -15,7 +15,7 @@ data PM_State
   }
 
 procMgrIState :: PM_State
-procMgrIState = PM_State (ApplicationGraph [] []) (-1)
+procMgrIState = PM_State (ApplicationGraph "Generic" Nothing [] []) (-1)
 
 makeLenses ''PM_State
 

@@ -1,45 +1,90 @@
-{ "App" :
-    { "vertices" :
-        [ { "id"                   : 1
-          , "resourceRequirements" : "ANY_RES"
-          , "executionTime"        : 1
-          }
-        , { "id"                   : 2
-          , "resourceRequirements" : "ANY_RES"
-          , "executionTime"        : 1
-          }
-        , { "id"                   : 3
-          , "resourceRequirements" : "ANY_RES"
-          , "executionTime"        : 1
-          }
-        , { "id"                   : 4
-          , "resourceRequirements" : "ANY_RES"
-          , "executionTime"        : 1
-          }
-        ]
-    , "edges" :
-        [ { "nodeOut" : 1
-          , "nodeIn"  : 2
-          , "ntokens" : 0
-          }
-        , { "nodeOut" : 1
-          , "nodeIn"  : 3
-          , "ntokens" : 0
-          }
-        , { "nodeOut" : 2
-          , "nodeIn"  : 4
-          , "ntokens" : 0
-          }
-        , { "nodeOut" : 3
-          , "nodeIn"  : 4
-          , "ntokens" : 0
-          }
-        , { "nodeOut" : -1
-          , "nodeIn"  : 1
-          , "ntokens" : 4
-          }
-        ]
-    }
+{ "Apps" : [ { "name" : "app1"
+             , "scheduler" : "FIFO"
+             , "vertices" :
+                 [ { "id"                   : 1
+                   , "resourceRequirements" : "ANY_RES"
+                   , "executionTime"        : 1
+                   }
+                 , { "id"                   : 2
+                   , "resourceRequirements" : "ANY_RES"
+                   , "executionTime"        : 1
+                   }
+                 , { "id"                   : 3
+                   , "resourceRequirements" : "ANY_RES"
+                   , "executionTime"        : 5
+                   }
+                 , { "id"                   : 4
+                   , "resourceRequirements" : "ANY_RES"
+                   , "executionTime"        : 1
+                   }
+                 ]
+             , "edges" :
+                 [ { "nodeOut" : 1
+                   , "nodeIn"  : 2
+                   , "ntokens" : 0
+                   }
+                 , { "nodeOut" : 1
+                   , "nodeIn"  : 3
+                   , "ntokens" : 0
+                   }
+                 , { "nodeOut" : 2
+                   , "nodeIn"  : 4
+                   , "ntokens" : 0
+                   }
+                 , { "nodeOut" : 3
+                   , "nodeIn"  : 4
+                   , "ntokens" : 0
+                   }
+                 , { "nodeOut" : -1
+                   , "nodeIn"  : 1
+                   , "ntokens" : 4
+                   }
+                 ]
+             }
+           , { "name" : "app2"
+             , "scheduler" : "FIFO"
+             , "vertices" :
+                 [ { "id"                   : 1
+                   , "resourceRequirements" : "ANY_RES"
+                   , "executionTime"        : 1
+                   }
+                 , { "id"                   : 2
+                   , "resourceRequirements" : "ANY_RES"
+                   , "executionTime"        : 1
+                   }
+                 , { "id"                   : 3
+                   , "resourceRequirements" : "ANY_RES"
+                   , "executionTime"        : 1
+                   }
+                 , { "id"                   : 4
+                   , "resourceRequirements" : "ANY_RES"
+                   , "executionTime"        : 1
+                   }
+                 ]
+             , "edges" :
+                 [ { "nodeOut" : 1
+                   , "nodeIn"  : 2
+                   , "ntokens" : 0
+                   }
+                 , { "nodeOut" : 1
+                   , "nodeIn"  : 3
+                   , "ntokens" : 0
+                   }
+                 , { "nodeOut" : 2
+                   , "nodeIn"  : 4
+                   , "ntokens" : 0
+                   }
+                 , { "nodeOut" : 3
+                   , "nodeIn"  : 4
+                   , "ntokens" : 0
+                   }
+                 , { "nodeOut" : -1
+                   , "nodeIn"  : 1
+                   , "ntokens" : 1
+                   }
+                 ]
+             }
+           ]
 , "Platform" :
     [ { "id"   : 0
       , "type" : "ANY_RES"

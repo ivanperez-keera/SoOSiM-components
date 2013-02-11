@@ -19,12 +19,14 @@ data TH_State
   { _actual_id       :: ThreadId
   , _sched_id        :: ComponentId
   , _thread_state    :: Maybe (TVar Thread)
+  , _appName         :: String
   }
 
 makeLenses ''TH_State
 
 data TH_Cmd
   = TH_Start
+  | TH_Stop
   deriving Typeable
 
 data TH_Msg
@@ -32,13 +34,13 @@ data TH_Msg
   deriving Typeable
 
 threadIState :: TH_State
-threadIState = TH_State (-1) (-1) Nothing
+threadIState = TH_State (-1) (-1) Nothing ""
 
 threadBehaviour ::
   TH_State
   -> Input TH_Cmd
   -> Sim TH_State
-threadBehaviour s@(TH_State _ _ Nothing) _ = yield s
+threadBehaviour s@(TH_State _ _ Nothing _) _ = yield s
 
 threadBehaviour s (Message _ TH_Start _) = do
   let ts = fromJust $ s ^. thread_state
@@ -49,12 +51,12 @@ threadBehaviour s (Message _ TH_Start _) = do
       runSTM $ mapM_ readTQueue (t ^. in_ports)
 
       -- Execute computation
-      traceMsgTag "Started" ("T" ++ show (t ^. threadId) ++ "-S")
       compute ((t ^. exec_cycles) - 1) ()
-      traceMsgTag "Finished" ("T" ++ show (t ^. threadId) ++ "-E")
+      traceMsgTag "Finished" ("T" ++ show (t ^. threadId) ++ "_" ++ (s ^. appName) ++ "-E")
 
       -- Write to output ports
-      runSTM $ mapM_ (\(_,q) -> writeTQueue q ()) (t^.out_ports)
+      currentTime <- getTime
+      runSTM $ mapM_ (\(_,q) -> writeTQueue q currentTime) (t^.out_ports)
 
       -- Signal scheduler that thread has completed
       runSTM $ modifyTVar' ts (execution_state .~ Waiting)
@@ -73,6 +75,8 @@ threadBehaviour s (Message _ TH_Start _) = do
 
     Killed -> do
       traceMsg "Killed"
-      stop
+      yield s
+
+threadBehaviour s (Message _ TH_Stop _) = stop
 
 threadBehaviour s _ = yield s

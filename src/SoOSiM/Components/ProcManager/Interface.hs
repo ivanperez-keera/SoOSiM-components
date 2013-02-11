@@ -23,6 +23,11 @@ processManager r = componentLookup ProcManager >>= \x -> case x of
   where
     iState = procMgrIState { _rm = r }
 
+createProcessManager :: ComponentId -> Sim ComponentId
+createProcessManager r = createComponentNPS Nothing Nothing (Just iState) ProcManager
+  where
+    iState = procMgrIState { _rm = r }
+
 terminateProgram :: ComponentId -> Sim ()
 terminateProgram cId = notify ProcManager cId TerminateProgram
 

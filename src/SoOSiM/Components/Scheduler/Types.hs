@@ -39,10 +39,17 @@ data SC_State
   , _thread_res_allocation :: HashMap ThreadId [ResourceId]
     -- | This associates each threadId to a componentId
   , _components   :: HashMap ThreadId ComponentId
+    -- | Method by which to sort the ready queue
+  , _sortingMethod :: Thread -> Thread -> Ordering
+  , _appName :: String
   }
 
+-- Sort ready list by FIFO (i.e. arrival time)
+byArrivalTime :: Thread -> Thread -> Ordering
+byArrivalTime t1 t2 = compare (_activation_time t1) (_activation_time t2)
+
 schedIState :: SC_State
-schedIState = SC_State (-1) empty [] [] empty empty empty empty empty
+schedIState = SC_State (-1) empty [] [] empty empty empty empty empty byArrivalTime ""
 
 makeLenses ''SC_State
 
@@ -50,6 +57,8 @@ data SC_Cmd
   = Init (HashMap ThreadId (TVar Thread))
          [(ResourceId,ResourceDescriptor)]
          (HashMap ThreadId [ResourceId])
+         (Maybe String)
+         String
   | ThreadCompleted ThreadId
   | WakeUpThreads
   | FindFreeResources ThreadId

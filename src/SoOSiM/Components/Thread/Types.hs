@@ -19,11 +19,11 @@ data Thread
     -- | number of outgoing \"ports\", each out-port has an id form 0 to (n_in - 1)
   , _n_out           :: Int
     -- | incoming ports: ntokens per port
-  , _in_ports        :: [TQueue ()]
+  , _in_ports        :: [TQueue Int]
     -- | outgoing links
     --
     -- contains the pair (thread_dest_id, in_port_id) of the destination threads
-  , _out_ports       :: [(ThreadId,TQueue ())]
+  , _out_ports       :: [(ThreadId,TQueue Int)]
     -- | Number of (simulation) cycles needed to complete one instance of the thread
   , _exec_cycles     :: Int
     -- | resource requirements
