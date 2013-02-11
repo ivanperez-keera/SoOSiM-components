@@ -138,7 +138,7 @@ find_free_resource thId = do
 
 -- Sort ready list by FIFO (i.e. arrival time)
 byArrivalTime :: Thread -> Thread -> Ordering
-byArrivalTime t1 t2 = compare (t1 ^. activation_time) (t2 ^. activation_time)
+byArrivalTime t1 t2 = compare (_activation_time t1) (_activation_time t2)
 
 schedule :: Sched Bool
 schedule = do
