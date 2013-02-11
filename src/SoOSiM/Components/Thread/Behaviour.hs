@@ -49,9 +49,9 @@ threadBehaviour s (Message _ TH_Start _) = do
       runSTM $ mapM_ readTQueue (t ^. in_ports)
 
       -- Execute computation
-      traceMsgTag "Started" ("<T" ++ show (t ^. threadId) ++ "-S>")
+      traceMsgTag "Started" ("T" ++ show (t ^. threadId) ++ "-S")
       compute ((t ^. exec_cycles) - 1) ()
-      traceMsgTag "Finished" ("<T" ++ show (t ^. threadId) ++ "-E>")
+      traceMsgTag "Finished" ("T" ++ show (t ^. threadId) ++ "-E")
 
       -- Write to output ports
       runSTM $ mapM_ (\(_,q) -> writeTQueue q ()) (t^.out_ports)

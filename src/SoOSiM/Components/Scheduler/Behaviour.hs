@@ -19,7 +19,7 @@ import Data.List (delete,sortBy)
 import Data.Maybe (listToMaybe)
 import qualified Data.Traversable as T
 
-import SoOSiM hiding (traceMsg)
+import SoOSiM hiding (traceMsg,traceMsgTag)
 import qualified SoOSiM
 import SoOSiM.Components.Common
 import SoOSiM.Components.ProcManager
@@ -58,6 +58,7 @@ behaviour (Message _ (Init tl res th_all) retAddr) = do
   thread_res_allocation .= th_all
 
   -- Ready! Now we have to call schedule for the first time
+  traceMsgTag "Running scheduler" "SS"
   schedule
 
 behaviour _ = do
@@ -150,7 +151,7 @@ schedule = do
   finished <- (&&) <$> (uses ready null) <*> (uses exec_threads HashMap.null)
   if finished
     then do
-      traceMsg ("Program finished")
+      traceMsgTag "Program finished" "SE"
       use pm >>= (liftS . terminateProgram)
       return False
     else do
@@ -187,3 +188,4 @@ schedule = do
 modifyThread l f = use l >>= (maybe (return ()) (liftS . runSTM . f))
 readThread l     = use l >>= (liftS . runSTM . maybe (return Nothing) (fmap Just . readTVar))
 traceMsg         = liftS . SoOSiM.traceMsg
+traceMsgTag      = (liftS .) . SoOSiM.traceMsgTag
