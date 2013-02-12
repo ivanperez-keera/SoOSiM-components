@@ -70,6 +70,8 @@ behaviour (Message _ (Init tl res th_all smM an) retAddr) = do
   -- Ready! Now we have to call schedule for the first time
   schedule
 
+behaviour (Message _ StopSched _) = liftS stop
+
 behaviour _ = do
   -- Check which threads completed
   tids <- uses thread_list HashMap.keys
@@ -156,36 +158,37 @@ schedule = do
       use pm >>= (liftS . terminateProgram)
       return False
     else do
-    -- Otherwise, start executing threads on resources
-    -- Visit the read list in order of priority
-    tIds <- use ready
-    rm_map <- use res_map
-    aN <- use appName
-    forM_ tIds $ \th -> do
-      -- Find a suitable resource for the thread
-      resM <- find_free_resource th
-      maybe' resM (traceMsgTag ("Thread " ++ show th ++ " is waiting") ("T" ++ show th ++ "_" ++ aN ++ "-W")) $ \res -> do
-        traceMsgTag ("Starting thread " ++ show th ++ " on Node " ++ show res) ("T" ++ show th ++ "_" ++ aN ++ "-S")
-        -- remove from the ready list
-        ready %= (delete th)
-        -- Execute th on res
-        res_map._at res .= BUSY_RES
-        exec_threads.at th ?= res
+      -- Otherwise, start executing threads on resources
+      -- Visit the read list in order of priority
+      tIds <- use ready
+      rm_map <- use res_map
+      aN <- use appName
 
-        -- create thread instance on the node if it was killed
-        Just t <- use (thread_list.at th)
-        t' <- liftS . runSTM $ readTVar t
-        when (t'^.execution_state == Killed) $ do
-          sId <- liftS $ getComponentId
-          cId <- liftS $ threadInstance th sId t res aN
-          components.at th ?= cId
+      forM_ tIds $ \th -> do
+        -- Find a suitable resource for the thread
+        resM <- find_free_resource th
+        maybe' resM (traceMsgTag ("Thread " ++ show th ++ " is waiting") ("T" ++ show th ++ "_" ++ aN ++ "-W")) $ \res -> do
+          traceMsgTag ("Starting thread " ++ show th ++ " on Node " ++ show res) ("T" ++ show th ++ "_" ++ aN ++ "-S")
+          -- remove from the ready list
+          ready %= (delete th)
+          -- Execute th on res
+          res_map._at res .= BUSY_RES
+          exec_threads.at th ?= res
 
-        -- Start the tread
-        modifyThread (thread_list.at th)
-          (\t -> modifyTVar' t (execution_state .~ Executing))
-        use (components.at th) >>=
-          maybe (return ()) (\cId -> liftS $ startThread cId aN th)
-    return True
+          -- create thread instance on the node if it was killed
+          Just t <- use (thread_list.at th)
+          t' <- liftS . runSTM $ readTVar t
+          when (t'^.execution_state == Killed) $ do
+            sId <- liftS $ getComponentId
+            cId <- liftS $ threadInstance th sId t res aN
+            components.at th ?= cId
+
+          -- Start the tread
+          modifyThread (thread_list.at th)
+            (\t -> modifyTVar' t (execution_state .~ Executing))
+          use (components.at th) >>=
+            maybe (return ()) (\cId -> liftS $ startThread cId aN th)
+      return True
 
 killThreads :: Sched ()
 killThreads = do

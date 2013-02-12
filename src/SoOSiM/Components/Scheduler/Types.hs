@@ -62,6 +62,7 @@ data SC_Cmd
   | ThreadCompleted ThreadId
   | WakeUpThreads
   | FindFreeResources ThreadId
+  | StopSched
   deriving Typeable
 
 data SC_Msg

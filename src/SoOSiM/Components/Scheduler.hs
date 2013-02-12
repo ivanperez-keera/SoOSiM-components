@@ -1,6 +1,8 @@
 module SoOSiM.Components.Scheduler
   ( scheduler
+  , newScheduler
   , initScheduler
+  , stopScheduler
   )
 where
 

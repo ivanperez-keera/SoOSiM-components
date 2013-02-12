@@ -10,6 +10,7 @@ import Control.Concurrent.STM.TQueue (newTQueue,writeTQueue)
 import Control.Lens
 import Control.Monad
 import Control.Monad.State.Strict
+import Control.Monad.Writer
 import qualified Data.Foldable       as F
 import           Data.HashMap.Strict (HashMap)
 import qualified Data.HashMap.Strict as HashMap
@@ -57,9 +58,9 @@ behaviour (Message _ (RunProgram fN) retAddr) = do
   startTime <- lift $ getTime
 
   -- Make connections
-  (threads',[]) <- F.foldrM
+  ((threads',[]), periodicEdges) <- runWriterT $ F.foldrM
          (\e (t,(q:qs)) -> do
-            lift $ runSTM $ replicateM (n_tokens e) (writeTQueue q startTime)
+            lift $ lift $ runSTM $ replicateM (n_tokens e) (writeTQueue q startTime)
                 -- Create the in_port of the destination thread, and
                 -- initialize it with the number of tokens
             let t'  = if (end e < 0)
@@ -71,6 +72,12 @@ behaviour (Message _ (RunProgram fN) retAddr) = do
                 t'' = if (start e < 0)
                         then t'
                         else HashMap.adjust (out_ports %~ (++ [(end e,q)])) (start e) t'
+
+            -- Instantiate periodic edges
+            case (periodic e) of
+              Nothing    -> return ()
+              Just (p,n) -> tell [(q,p-1,p,n)]
+
             return (t'',qs)
          )
          (threads,tbqueues)
@@ -114,13 +121,7 @@ behaviour (Message _ (RunProgram fN) retAddr) = do
 
   traceMsg $ "ThreadAssignment: " ++ show th_all
 
-  -- Instantiate periodic edges
-  let periodicEdges = mapMaybe (\(e,q) -> case e of
-                                  (Edge _ _ _ Nothing _)      -> Nothing
-                                  (Edge _ _ _ (Just (p,n)) _) -> Just (q,0,p,n)
-                               )
-                    $ zip (edges thread_graph) tbqueues
-
+  -- Instantiate Periodic I/O
   unless (null periodicEdges) $ do
     let pState = PeriodicIO (periodicEdges,fN)
     lift $ SoOSiM.createComponentNPS Nothing Nothing (Just pState) pState
@@ -130,7 +131,7 @@ behaviour (Message _ (RunProgram fN) retAddr) = do
   -- threads, and the list of resources
   threads'' <- T.mapM (lift . runSTM . newTVar) threads'
   pmId <- lift $ getComponentId
-  sId  <- lift $ scheduler pmId
+  sId  <- lift $ newScheduler pmId
   traceMsg $ "Starting scheduler"
   lift $ initScheduler sId threads'' rc th_all (schedulerSort thread_graph) fN
 
@@ -139,6 +140,8 @@ behaviour (Message _ TerminateProgram retAddr) = do
   pmId <- lift $ getComponentId
   rId  <- use rm
   res  <- lift $ freeResources rId pmId
+  lift $ stopScheduler (returnAddress retAddr)
+  lift stop
   return ()
 
 behaviour _ = return ()

@@ -31,6 +31,13 @@ scheduler p = componentLookup Scheduler >>= \x -> case x of
   where
     iState = schedIState { _pm = p }
 
+newScheduler ::
+  ComponentId
+  -> Sim ComponentId
+newScheduler p = createComponentNPS Nothing Nothing (Just iState) Scheduler
+  where
+    iState = schedIState { _pm = p }
+
 initScheduler ::
   ComponentId
   -> HashMap ThreadId (TVar Thread)
@@ -41,3 +48,8 @@ initScheduler ::
   -> Sim ()
 initScheduler cId th res th_all smM an =
   notify Scheduler cId (Init th res th_all smM an)
+
+stopScheduler ::
+  ComponentId
+  -> Sim ()
+stopScheduler cId = notify Scheduler cId StopSched
