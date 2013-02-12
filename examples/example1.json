@@ -11,7 +11,7 @@
                    }
                  , { "id"                   : 3
                    , "resourceRequirements" : "ANY_RES"
-                   , "executionTime"        : 5
+                   , "executionTime"        : 4
                    }
                  , { "id"                   : 4
                    , "resourceRequirements" : "ANY_RES"
@@ -21,19 +21,15 @@
              , "edges" :
                  [ { "nodeOut" : 1
                    , "nodeIn"  : 2
-                   , "ntokens" : 0
                    }
                  , { "nodeOut" : 1
                    , "nodeIn"  : 3
-                   , "ntokens" : 0
                    }
                  , { "nodeOut" : 2
                    , "nodeIn"  : 4
-                   , "ntokens" : 0
                    }
                  , { "nodeOut" : 3
                    , "nodeIn"  : 4
-                   , "ntokens" : 0
                    }
                  , { "nodeOut" : -1
                    , "nodeIn"  : 1
@@ -54,7 +50,7 @@
                    }
                  , { "id"                   : 3
                    , "resourceRequirements" : "ANY_RES"
-                   , "executionTime"        : 1
+                   , "executionTime"        : 4
                    }
                  , { "id"                   : 4
                    , "resourceRequirements" : "ANY_RES"
@@ -64,23 +60,23 @@
              , "edges" :
                  [ { "nodeOut" : 1
                    , "nodeIn"  : 2
-                   , "ntokens" : 0
                    }
                  , { "nodeOut" : 1
                    , "nodeIn"  : 3
-                   , "ntokens" : 0
                    }
                  , { "nodeOut" : 2
                    , "nodeIn"  : 4
-                   , "ntokens" : 0
                    }
                  , { "nodeOut" : 3
                    , "nodeIn"  : 4
-                   , "ntokens" : 0
                    }
                  , { "nodeOut" : -1
                    , "nodeIn"  : 1
-                   , "ntokens" : 1
+                   , "periodic" : [4,4]
+                   }
+                 , { "nodeOut" : 4
+                   , "nodeIn"  : -1
+                   , "deadline" : 2
                    }
                  ]
              }

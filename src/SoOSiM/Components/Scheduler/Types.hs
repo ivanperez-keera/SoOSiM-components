@@ -2,9 +2,10 @@
 {-# LANGUAGE TemplateHaskell    #-}
 module SoOSiM.Components.Scheduler.Types where
 
-import Control.Concurrent.STM.TVar (TVar)
-import Control.Lens                (makeLenses)
-import Data.HashMap.Strict         (HashMap,empty)
+import Control.Concurrent.STM.TQueue (TQueue)
+import Control.Concurrent.STM.TVar   (TVar)
+import Control.Lens                  (makeLenses)
+import Data.HashMap.Strict           (HashMap,empty)
 
 import SoOSiM
 import SoOSiM.Components.Common
@@ -41,7 +42,12 @@ data SC_State
   , _components   :: HashMap ThreadId ComponentId
     -- | Method by which to sort the ready queue
   , _sortingMethod :: Thread -> Thread -> Ordering
+    -- | Name of the app being schedules
   , _appName :: String
+    -- | Periodic I/O
+  , _periodic_edges :: [(TQueue Int, Int, Int, Int)]
+    -- | Deadlines
+  , _deadline_edges :: [(TQueue Int, Int)]
   }
 
 -- Sort ready list by FIFO (i.e. arrival time)
@@ -49,7 +55,7 @@ byArrivalTime :: Thread -> Thread -> Ordering
 byArrivalTime t1 t2 = compare (_activation_time t1) (_activation_time t2)
 
 schedIState :: SC_State
-schedIState = SC_State (-1) empty [] [] empty empty empty empty empty byArrivalTime ""
+schedIState = SC_State (-1) empty [] [] empty empty empty empty empty byArrivalTime "" [] []
 
 makeLenses ''SC_State
 
@@ -59,6 +65,8 @@ data SC_Cmd
          (HashMap ThreadId [ResourceId])
          (Maybe String)
          String
+         [(TQueue Int,Int,Int,Int)]
+         [(TQueue Int,Int)]
   | ThreadCompleted ThreadId
   | WakeUpThreads
   | FindFreeResources ThreadId

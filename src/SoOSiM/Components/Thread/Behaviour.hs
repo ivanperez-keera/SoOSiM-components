@@ -47,16 +47,16 @@ threadBehaviour s (Message _ TH_Start _) = do
   t <- runSTM $ readTVar ts
   case (t ^. execution_state) of
     Executing -> do
-      -- Read from inputs ports
-      runSTM $ mapM_ readTQueue (t ^. in_ports)
+      -- Read timestamps from inputs ports
+      timestamps <- runSTM $ mapM readTQueue (t ^. in_ports)
 
       -- Execute computation
       compute ((t ^. exec_cycles) - 1) ()
       traceMsgTag "Finished" ("T" ++ show (t ^. threadId) ++ "_" ++ (s ^. appName) ++ "-E")
 
       -- Write to output ports
-      currentTime <- getTime
-      runSTM $ mapM_ (\(_,q) -> writeTQueue q currentTime) (t^.out_ports)
+      let newTime = minimum timestamps
+      runSTM $ mapM_ (\(_,q) -> writeTQueue q newTime) (t^.out_ports)
 
       -- Signal scheduler that thread has completed
       runSTM $ modifyTVar' ts (execution_state .~ Waiting)

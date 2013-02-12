@@ -1,6 +1,7 @@
 {-# LANGUAGE TypeFamilies #-}
 module SoOSiM.Components.Scheduler.Interface where
 
+import Control.Concurrent.STM.TQueue (TQueue)
 import Control.Concurrent.STM.TVar (TVar)
 import Data.HashMap.Strict (HashMap)
 
@@ -45,9 +46,11 @@ initScheduler ::
   -> HashMap ThreadId [ResourceId]
   -> Maybe String
   -> String
+  -> [(TQueue Int,Int,Int,Int)]
+  -> [(TQueue Int,Int)]
   -> Sim ()
-initScheduler cId th res th_all smM an =
-  notify Scheduler cId (Init th res th_all smM an)
+initScheduler cId th res th_all smM an pE dE =
+  notify Scheduler cId (Init th res th_all smM an pE dE)
 
 stopScheduler ::
   ComponentId

@@ -25,3 +25,24 @@ whenM t f = do
 
 uncurry2 :: (a -> b -> c -> d) -> (a,b,c) -> d
 uncurry2 f (a,b,c) = f a b c
+
+untilJust ::
+  Monad m
+  => (m (Maybe a))
+  -> m a
+untilJust mf = do
+  aM <- mf
+  case aM of
+    Just a  -> return a
+    Nothing -> untilJust mf
+
+untilNothing ::
+  Monad m
+  => m (Maybe a)
+  -> (a -> m ())
+  -> m ()
+untilNothing mf mu = do
+  aM <- mf
+  case aM of
+    Nothing -> return ()
+    Just a  -> mu a >> untilNothing mf mu

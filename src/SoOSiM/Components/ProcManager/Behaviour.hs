@@ -22,7 +22,6 @@ import qualified SoOSiM
 import SoOSiM hiding (traceMsg)
 import SoOSiM.Components.ApplicationHandler
 import SoOSiM.Components.Common
-import SoOSiM.Components.PeriodicIO
 import SoOSiM.Components.ResourceDescriptor
 import SoOSiM.Components.ResourceManager
 import SoOSiM.Components.ResourceManager.Types
@@ -58,7 +57,7 @@ behaviour (Message _ (RunProgram fN) retAddr) = do
   startTime <- lift $ getTime
 
   -- Make connections
-  ((threads',[]), periodicEdges) <- runWriterT $ F.foldrM
+  ((threads',[]), (periodicEdges,deadlineEdges)) <- runWriterT $ F.foldrM
          (\e (t,(q:qs)) -> do
             lift $ lift $ runSTM $ replicateM (n_tokens e) (writeTQueue q startTime)
                 -- Create the in_port of the destination thread, and
@@ -76,7 +75,12 @@ behaviour (Message _ (RunProgram fN) retAddr) = do
             -- Instantiate periodic edges
             case (periodic e) of
               Nothing    -> return ()
-              Just (p,n) -> tell [(q,p-1,p,n)]
+              Just (p,n) -> tell ([(q,p-1,p,n)],[])
+
+            -- Instantiate deadline edges
+            case (deadline e) of
+              Nothing -> return ()
+              Just n  -> tell ([],[(q,n)])
 
             return (t'',qs)
          )
@@ -121,28 +125,25 @@ behaviour (Message _ (RunProgram fN) retAddr) = do
 
   traceMsg $ "ThreadAssignment: " ++ show th_all
 
-  -- Instantiate Periodic I/O
-  unless (null periodicEdges) $ do
-    let pState = PeriodicIO (periodicEdges,fN)
-    lift $ SoOSiM.createComponentNPS Nothing Nothing (Just pState) pState
-    return ()
-
   -- Now initialize the scheduler, passing the list of
   -- threads, and the list of resources
   threads'' <- T.mapM (lift . runSTM . newTVar) threads'
   pmId <- lift $ getComponentId
   sId  <- lift $ newScheduler pmId
   traceMsg $ "Starting scheduler"
-  lift $ initScheduler sId threads'' rc th_all (schedulerSort thread_graph) fN
+  lift $ initScheduler sId threads'' rc th_all (schedulerSort thread_graph) fN periodicEdges deadlineEdges
 
 behaviour (Message _ TerminateProgram retAddr) = do
   -- The program has completed, free the resources
   pmId <- lift $ getComponentId
   rId  <- use rm
   res  <- lift $ freeResources rId pmId
+
+  -- Stop the scheduler
   lift $ stopScheduler (returnAddress retAddr)
+
+  -- Stop the process manager
   lift stop
-  return ()
 
 behaviour _ = return ()
 
@@ -192,13 +193,3 @@ allocate_simple threads resMap = thAll
                                 in  (rm:rms',rId)
 
 traceMsg = lift . SoOSiM.traceMsg
-
-untilJust ::
-  Monad m
-  => (m (Maybe a))
-  -> m a
-untilJust mf = do
-  aM <- mf
-  case aM of
-    Just a  -> return a
-    Nothing -> untilJust mf

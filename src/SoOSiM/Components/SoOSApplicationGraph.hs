@@ -69,7 +69,7 @@ instance FromJSON Edge where
     Edge <$>
       (v .: "nodeOut") <*>
       (v .: "nodeIn") <*>
-      (v .: "ntokens") <*>
+      (v .:? "ntokens" .!= 0) <*>
       (v .:? "periodic") <*>
       (v .:? "deadline")
 

@@ -7,7 +7,7 @@ where
 
 import Control.Applicative
 import Control.Concurrent.STM (STM)
-import Control.Concurrent.STM.TQueue (isEmptyTQueue)
+import Control.Concurrent.STM.TQueue (isEmptyTQueue,tryReadTQueue,writeTQueue)
 import Control.Concurrent.STM.TVar (modifyTVar',readTVar)
 import Control.Lens
 import Control.Monad
@@ -17,13 +17,12 @@ import Data.Char
 import Data.HashMap.Strict (HashMap)
 import qualified Data.HashMap.Strict as HashMap
 import Data.List (delete,sortBy)
-import Data.Maybe (listToMaybe,isNothing)
+import Data.Maybe (catMaybes,listToMaybe,isNothing)
 import qualified Data.Traversable as T
 
 import SoOSiM hiding (traceMsg,traceMsgTag)
 import qualified SoOSiM
 import SoOSiM.Components.Common
-import SoOSiM.Components.PeriodicIO
 import SoOSiM.Components.ProcManager
 import SoOSiM.Components.ResourceDescriptor
 import SoOSiM.Components.Thread
@@ -48,8 +47,10 @@ liftS = Sched . lift
 behaviour ::
   Input SC_Cmd
   -> Sched Bool
-behaviour (Message _ (Init tl res th_all smM an) retAddr) = do
+behaviour (Message _ (Init tl res th_all smM an pE dE) retAddr) = do
   thread_list .= tl
+  periodic_edges .= pE
+  deadline_edges .= dE
   -- Initializes all resources
   mapM_ (\x -> do res_map.at (fst x)   ?= IDLE_RES
                   res_types.at (fst x) ?= (snd x)
@@ -141,6 +142,25 @@ find_free_resource thId = do
 
 schedule :: Sched Bool
 schedule = do
+  currentTime <- liftS getTime
+
+  -- Run periodic I/O
+  pe  <- use periodic_edges
+  pe' <- fmap catMaybes $ forM pe $ \(q,c,p,n) -> do
+            case n of
+              0 -> return Nothing
+              n | c == (p-1) -> do liftS $ runSTM $ writeTQueue q currentTime
+                                   return $ Just (q,0,p,n-1)
+                | otherwise  -> return $ Just (q,c+1,p,n)
+  periodic_edges .= pe'
+
+  -- Check deadlines
+  de <- use deadline_edges
+  forM_ de $ \(q,n) ->
+    untilNothing (liftS $ runSTM $ tryReadTQueue q)
+                 (\a -> when ((currentTime - a) > n) (deadLineMissed a currentTime n)
+                 )
+
   -- Sort ready list according to given method
   wake_up_threads
 
@@ -149,7 +169,7 @@ schedule = do
   -- CONSUMED, NOTHING ELSE TO DO)
   finished <- and <$> T.sequenceA [ uses ready null
                                   , uses exec_threads HashMap.null
-                                  , use  appName >>= (\n -> fmap isNothing $ liftS (componentLookup (PeriodicIO (undefined,n))))
+                                  , uses periodic_edges null
                                   ]
   if finished
     then do
@@ -167,8 +187,8 @@ schedule = do
       forM_ tIds $ \th -> do
         -- Find a suitable resource for the thread
         resM <- find_free_resource th
-        maybe' resM (traceMsgTag ("Thread " ++ show th ++ " is waiting") ("T" ++ show th ++ "_" ++ aN ++ "-W")) $ \res -> do
-          traceMsgTag ("Starting thread " ++ show th ++ " on Node " ++ show res) ("T" ++ show th ++ "_" ++ aN ++ "-S")
+        maybe' resM (waitThreadMsg th aN) $ \res -> do
+          startThreadMsg th res aN
           -- remove from the ready list
           ready %= (delete th)
           -- Execute th on res
@@ -200,3 +220,11 @@ modifyThread l f = use l >>= (maybe (return ()) (liftS . runSTM . f))
 readThread l     = use l >>= (liftS . runSTM . maybe (return Nothing) (fmap Just . readTVar))
 traceMsg         = liftS . SoOSiM.traceMsg
 traceMsgTag      = (liftS .) . SoOSiM.traceMsgTag
+
+waitThreadMsg th aN      = traceMsgTag ("Thread " ++ show th ++ " is waiting") ("T" ++ show th ++ "_" ++ aN ++ "-W")
+startThreadMsg th res aN = traceMsgTag ("Starting thread " ++ show th ++ " on Node " ++ show res) ("T" ++ show th ++ "_" ++ aN ++ "-S")
+deadLineMissed st et n   = traceMsgTag ("Token missed deadline of " ++ show n ++ " by " ++ show (et - st - n) ++ " cycles") ("DM_" ++ show missed)
+  where
+    missed = et - st - n
+
+
