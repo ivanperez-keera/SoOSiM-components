@@ -158,7 +158,7 @@ schedule = do
   de <- use deadline_edges
   forM_ de $ \(q,n) ->
     untilNothing (liftS $ runSTM $ tryReadTQueue q)
-                 (\a -> when ((currentTime - a) > n) (deadLineMissed a currentTime n)
+                 (\a -> when ((currentTime - 1 - a) > n) (deadLineMissed a (currentTime - 1) n)
                  )
 
   -- Sort ready list according to given method
