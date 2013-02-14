@@ -52,7 +52,7 @@ threadBehaviour s (Message _ TH_Start _) = do
 
       -- Execute computation
       compute ((t ^. exec_cycles) - 1) ()
-      traceMsgTag "Finished" ("T" ++ show (t ^. threadId) ++ "_" ++ (s ^. appName) ++ "-E")
+      traceMsgTag "Finished" ("ThreadEnd " ++ (s ^. appName) ++ ".T" ++ show (t ^. threadId) ++ " Proc" ++ show (t ^. res_id))
 
       -- Write to output ports
       let newTime = minimum timestamps

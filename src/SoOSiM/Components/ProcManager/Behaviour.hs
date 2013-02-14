@@ -44,6 +44,7 @@ behaviour ::
   Input PM_Cmd
   -> ProcMgrM ()
 behaviour (Message _ (RunProgram fN) retAddr) = do
+  lift $ traceMsgTag ("Begin application " ++ fN) ("AppBegin " ++ fN)
   -- invokes the Application Handler
   thread_graph <- lift $ applicationHandler >>= flip loadProgram fN
 
@@ -134,6 +135,8 @@ behaviour (Message _ (RunProgram fN) retAddr) = do
   lift $ initScheduler sId threads'' rc th_all (schedulerSort thread_graph) fN periodicEdges deadlineEdges
 
 behaviour (Message _ TerminateProgram retAddr) = do
+  fN <- fmap appName $ use thread_graph
+
   -- The program has completed, free the resources
   pmId <- lift $ getComponentId
   rId  <- use rm

@@ -25,7 +25,7 @@ import qualified SoOSiM
 import SoOSiM.Components.Common
 import SoOSiM.Components.ProcManager
 import SoOSiM.Components.ResourceDescriptor
-import SoOSiM.Components.Thread
+import SoOSiM.Components.Thread as Thread
 
 import SoOSiM.Components.Scheduler.Interface (Scheduler(..))
 import SoOSiM.Components.Scheduler.Types
@@ -100,6 +100,7 @@ thread_completed th = do
 -- Look at blocked thread, to see if someone needs to be woken up
 wake_up_threads :: Sched ()
 wake_up_threads = do
+  aN  <- use appName
   -- Check ever blocked thread to see if it has at least 1 token in
   -- each incoming link; if so, move the thread from blocked to ready
   tIds <- use blocked
@@ -115,6 +116,7 @@ wake_up_threads = do
                   -- Set the arrival time equal to the current simulation time
                   time <- liftS $ getTime
                   modifyThread (thread_list.at tid) (\t -> modifyTVar' t (activation_time .~ time))
+                  threadEncMsg tid aN
              )
 
   threads <- use thread_list >>= T.mapM (liftS . runSTM . readTVar)
@@ -142,6 +144,10 @@ find_free_resource thId = do
 
 schedule :: Sched Bool
 schedule = do
+  nId <- liftS $ getNodeId
+  aN <- use appName
+  runningScheduler aN nId
+
   currentTime <- liftS getTime
 
   -- Run periodic I/O
@@ -173,7 +179,7 @@ schedule = do
                                   ]
   if finished
     then do
-      traceMsg "Program finished"
+      traceMsgTag ("Application " ++ aN ++ " finished") ("AppFinish " ++ aN)
       killThreads
       use pm >>= (liftS . terminateProgram)
       return False
@@ -182,7 +188,6 @@ schedule = do
       -- Visit the read list in order of priority
       tIds <- use ready
       rm_map <- use res_map
-      aN <- use appName
 
       forM_ tIds $ \th -> do
         -- Find a suitable resource for the thread
@@ -205,7 +210,10 @@ schedule = do
 
           -- Start the tread
           modifyThread (thread_list.at th)
-            (\t -> modifyTVar' t (execution_state .~ Executing))
+            (\t -> modifyTVar' t ( (execution_state .~ Executing)
+                                 . (Thread.res_id .~ res)
+                                 )
+            )
           use (components.at th) >>=
             maybe (return ()) (\cId -> liftS $ startThread cId aN th)
       return True
@@ -221,10 +229,10 @@ readThread l     = use l >>= (liftS . runSTM . maybe (return Nothing) (fmap Just
 traceMsg         = liftS . SoOSiM.traceMsg
 traceMsgTag      = (liftS .) . SoOSiM.traceMsgTag
 
-waitThreadMsg th aN      = traceMsgTag ("Thread " ++ show th ++ " is waiting") ("T" ++ show th ++ "_" ++ aN ++ "-W")
-startThreadMsg th res aN = traceMsgTag ("Starting thread " ++ show th ++ " on Node " ++ show res) ("T" ++ show th ++ "_" ++ aN ++ "-S")
-deadLineMissed st et n   = traceMsgTag ("Token missed deadline of " ++ show n ++ " by " ++ show (et - st - n) ++ " cycles") ("DM_" ++ show missed)
+runningScheduler aN res  = traceMsgTag ("Running " ++ aN ++ " scheduler on Node " ++ show res) ("SchedulerExec " ++ aN ++ " Proc" ++ show res)
+waitThreadMsg th aN      = traceMsgTag ("Thread " ++ show th ++ " is waiting") ("ThreadWait " ++ aN ++ ".T" ++ show th)
+startThreadMsg th res aN = traceMsgTag ("Starting thread " ++ show th ++ " on Node " ++ show res) ("ThreadStart " ++ aN ++ ".T" ++ show th ++ " Proc" ++ show res)
+threadEncMsg th aN       = traceMsgTag ("Thread " ++ show th ++ " ready to start") ("ThreadEnqueued " ++ aN ++ ".T" ++ show th)
+deadLineMissed st et n   = traceMsgTag ("Token missed deadline of " ++ show n ++ " by " ++ show (et - st - n) ++ " cycles") ("DeadlineMissed " ++ show missed)
   where
     missed = et - st - n
-
-
