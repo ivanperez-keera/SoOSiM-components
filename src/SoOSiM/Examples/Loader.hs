@@ -19,7 +19,7 @@ loader :: FilePath -> IO SimState
 loader f = do
   (Example apps rs) <- readExample f
 
-  initSim $ do
+  initSim (res_id $ head rs) $ do
     traceMsg "Start the application handler"
     ahId <- applicationHandler
     addPrograms ahId (HashMap.fromList (zip (map appName apps) apps))
@@ -27,10 +27,10 @@ loader f = do
     traceMsg "Start the resource manager"
     rmId <- resourceManager
     sequence_ $ zipWith
-                  (\(Resource _ resT) r -> do
-                      rId <- r
+                  (\(Resource nId resT) r -> do
+                      rId <- r nId
                       addResource rmId rId resT
-                  ) rs (getNodeId:(repeat createNode))
+                  ) rs ((const getNodeId):(repeat (\r -> createNodeN r >> return r)))
 
     forM_ (map appName apps) $ \a -> do
       traceMsg "Start the process manager"
