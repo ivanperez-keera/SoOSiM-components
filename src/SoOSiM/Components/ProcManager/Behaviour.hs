@@ -54,41 +54,6 @@ behaviour (Message _ (RunProgram fN) retAddr) = do
               $ map (\v -> (v_id v, newThread (v_id v) (executionTime v)))
               $ vertices thread_graph
 
-  tbqueues <- lift $ runSTM $ replicateM (length $ edges thread_graph) newTQueue
-
-  startTime <- lift $ getTime
-
-  -- Make connections
-  ((threads',[]), (periodicEdges,deadlineEdges)) <- runWriterT $ F.foldrM
-         (\e (t,(q:qs)) -> do
-            lift $ lift $ runSTM $ replicateM (n_tokens e) (writeTQueue q startTime)
-                -- Create the in_port of the destination thread, and
-                -- initialize it with the number of tokens
-            let t'  = if (end e < 0)
-                        then t
-                        else HashMap.adjust (in_ports %~ (++ [q])) (end e) t
-
-                -- create the out_ports of the source thread, and
-                -- initialize it with the pair (thread_id, destination port)
-                t'' = if (start e < 0)
-                        then t'
-                        else HashMap.adjust (out_ports %~ (++ [(end e,q)])) (start e) t'
-
-            -- Instantiate periodic edges
-            case (periodic e) of
-              Nothing    -> return ()
-              Just (p,n) -> tell ([(q,p-1,p,n)],[])
-
-            -- Instantiate deadline edges
-            case (deadline e) of
-              Nothing -> return ()
-              Just n  -> tell ([],[(q,n)])
-
-            return (t'',qs)
-         )
-         (threads,tbqueues)
-       $ edges thread_graph
-
   (th_all,rc) <- untilJust $ do
     -- Now we have to contact the Resource Manager
 
@@ -119,20 +84,48 @@ behaviour (Message _ (RunProgram fN) retAddr) = do
 
     -- Allocation algorithms. Here I just statically allocate
     -- threads to resources in the simplest possible way
-    let th_allM = allocate_simple threads' rc
+    let th_allM = allocate_simple threads rc
 
     -- Another alternative allocation strategy
     -- let th_allM = allocate_global threads' res
     return $ fmap (,rc) th_allM
 
-  traceMsg $ "ThreadAssignment: " ++ show th_all
+  -- Make connections
+  tbqueues <- lift $ runSTM $ replicateM (length $ edges thread_graph) newTQueue
+  startTime <- lift $ getTime
+  ((threads',[]), (periodicEdges,deadlineEdges)) <- runWriterT $ F.foldrM
+         (\e (t,(q:qs)) -> do
+            lift $ lift $ runSTM $ replicateM (n_tokens e) (writeTQueue q startTime)
+                -- Create the in_port of the destination thread, and
+                -- initialize it with the number of tokens
+            let t'  = if (end e < 0)
+                        then t
+                        else HashMap.adjust (in_ports %~ (++ [q])) (end e) t
 
-  -- Initialize Periodic I/O if needed
+                -- create the out_ports of the source thread, and
+                -- initialize it with the pair (thread_id, destination port)
+                t'' = if (start e < 0)
+                        then t'
+                        else HashMap.adjust (out_ports %~ (++ [(end e,q)])) (start e) t'
+
+            -- Instantiate periodic edges
+            case (periodic e) of
+              Nothing    -> return ()
+              Just (p,n) -> do lift $ lift $ runSTM $ writeTQueue q startTime
+                               tell ([(q,0,p,n-1)],[])
+
+            -- Instantiate deadline edges
+            case (deadline e) of
+              Nothing -> return ()
+              Just n  -> tell ([],[(q,n,fN,start e)])
+
+            return (t'',qs)
+         )
+         (threads,tbqueues)
+       $ edges thread_graph
+
+  traceMsg $ "ThreadAssignment: " ++ show th_all
   periodicEdgesS <- lift $ runSTM $ newTVar periodicEdges
-  unless (null periodicEdges && null deadlineEdges) $ do
-    let pIOState = PeriodicIO (periodicEdgesS,deadlineEdges,fN)
-    newId <- lift $ SoOSiM.createComponentNPS Nothing Nothing (Just pIOState) pIOState
-    pIO .= newId
 
   -- Now initialize the scheduler, passing the list of
   -- threads, and the list of resources
@@ -142,6 +135,11 @@ behaviour (Message _ (RunProgram fN) retAddr) = do
   traceMsg $ "Starting scheduler"
   lift $ initScheduler sId threads'' rc th_all (schedulerSort thread_graph) fN periodicEdgesS
 
+  -- Initialize Periodic I/O if needed
+  unless (null periodicEdges && null deadlineEdges) $ do
+    let pIOState = PeriodicIOS (periodicEdgesS,deadlineEdges,sId)
+    newId <- lift $ SoOSiM.createComponentNPS Nothing Nothing (Just pIOState) (PeriodicIO fN)
+    pIO .= newId
 
 
 behaviour (Message _ TerminateProgram retAddr) = do

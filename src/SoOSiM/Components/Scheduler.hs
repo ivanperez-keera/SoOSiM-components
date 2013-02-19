@@ -3,6 +3,7 @@ module SoOSiM.Components.Scheduler
   , newScheduler
   , initScheduler
   , stopScheduler
+  , newIOToken
   )
 where
 

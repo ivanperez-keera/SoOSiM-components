@@ -61,3 +61,8 @@ threadCompleted ::
   -> ThreadId
   -> Sim ()
 threadCompleted cId tId = notify Scheduler cId (ThreadCompleted tId)
+
+newIOToken ::
+  ComponentId
+  -> Sim ()
+newIOToken cId = notify Scheduler cId NewIOToken

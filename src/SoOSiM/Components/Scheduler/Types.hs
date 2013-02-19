@@ -69,6 +69,7 @@ data SC_Cmd
   | WakeUpThreads
   | FindFreeResources ThreadId
   | StopSched
+  | NewIOToken
   deriving Typeable
 
 data SC_Msg
