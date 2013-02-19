@@ -12,10 +12,11 @@ data PM_State
   = PM_State
   { _thread_graph :: ApplicationGraph
   , _rm           :: ComponentId
+  , _pIO          :: ComponentId
   }
 
 procMgrIState :: PM_State
-procMgrIState = PM_State (ApplicationGraph "Generic" Nothing [] []) (-1)
+procMgrIState = PM_State (ApplicationGraph "Generic" Nothing [] []) (-1) (-1)
 
 makeLenses ''PM_State
 

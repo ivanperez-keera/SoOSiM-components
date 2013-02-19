@@ -11,6 +11,7 @@ import Data.Maybe
 import SoOSiM
 import SoOSiM.Components.Common
 
+import SoOSiM.Components.Scheduler.Interface
 import SoOSiM.Components.Thread.Interface
 import SoOSiM.Components.Thread.Types
 
@@ -42,7 +43,7 @@ threadBehaviour ::
   -> Sim TH_State
 threadBehaviour s@(TH_State _ _ Nothing _) _ = yield s
 
-threadBehaviour s (Message _ TH_Start _) = do
+threadBehaviour s (Message _ TH_Start schedId) = do
   let ts = fromJust $ s ^. thread_state
   t <- runSTM $ readTVar ts
   case (t ^. execution_state) of
@@ -60,6 +61,7 @@ threadBehaviour s (Message _ TH_Start _) = do
 
       -- Signal scheduler that thread has completed
       runSTM $ modifyTVar' ts (execution_state .~ Waiting)
+      threadCompleted (returnAddress schedId) (t ^. threadId)
 
       yield s
 

@@ -43,6 +43,8 @@ library
                       SoOSiM.Components.ApplicationHandler.Interface
                       SoOSiM.Components.ApplicationHandler.Types
 
+                      SoOSiM.Components.PeriodicIO
+
                       SoOSiM.Components.ProcManager.Behaviour
                       SoOSiM.Components.ProcManager.Interface
                       SoOSiM.Components.ProcManager.Types

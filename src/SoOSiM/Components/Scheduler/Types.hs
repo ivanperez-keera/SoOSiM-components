@@ -45,9 +45,8 @@ data SC_State
     -- | Name of the app being schedules
   , _appName :: String
     -- | Periodic I/O
-  , _periodic_edges :: [(TQueue Int, Int, Int, Int)]
-    -- | Deadlines
-  , _deadline_edges :: [(TQueue Int, Int)]
+  , _periodic_edges :: TVar [(TQueue Int, Int, Int, Int)]
+  , _last_run :: Int
   }
 
 -- Sort ready list by FIFO (i.e. arrival time)
@@ -55,7 +54,7 @@ byArrivalTime :: Thread -> Thread -> Ordering
 byArrivalTime t1 t2 = compare (_activation_time t1) (_activation_time t2)
 
 schedIState :: SC_State
-schedIState = SC_State (-1) empty [] [] empty empty empty empty empty byArrivalTime "" [] []
+schedIState = SC_State (-1) empty [] [] empty empty empty empty empty byArrivalTime "" undefined (-1)
 
 makeLenses ''SC_State
 
@@ -65,8 +64,7 @@ data SC_Cmd
          (HashMap ThreadId [ResourceId])
          (Maybe String)
          String
-         [(TQueue Int,Int,Int,Int)]
-         [(TQueue Int,Int)]
+         (TVar [(TQueue Int,Int,Int,Int)])
   | ThreadCompleted ThreadId
   | WakeUpThreads
   | FindFreeResources ThreadId

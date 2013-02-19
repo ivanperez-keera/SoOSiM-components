@@ -39,18 +39,19 @@ sched ::
   -> Sim SC_State
 sched s i = do
   (c,s') <- runStateT (runSched $ behaviour i) s
-  if c then return s'
-       else yield  s'
+  currentTime <- getTime
+  let s'' = set last_run currentTime s'
+  if c then return s''
+       else yield  s''
 
 liftS = Sched . lift
 
 behaviour ::
   Input SC_Cmd
   -> Sched Bool
-behaviour (Message _ (Init tl res th_all smM an pE dE) retAddr) = do
+behaviour (Message _ (Init tl res th_all smM an pE) retAddr) = do
   thread_list .= tl
   periodic_edges .= pE
-  deadline_edges .= dE
   -- Initializes all resources
   mapM_ (\x -> do res_map.at (fst x)   ?= IDLE_RES
                   res_types.at (fst x) ?= (snd x)
@@ -148,25 +149,6 @@ schedule = do
   aN <- use appName
   runningScheduler aN nId
 
-  currentTime <- liftS getTime
-
-  -- Run periodic I/O
-  pe  <- use periodic_edges
-  pe' <- fmap catMaybes $ forM pe $ \(q,c,p,n) -> do
-            case n of
-              0 -> return Nothing
-              n | c == (p-1) -> do liftS $ runSTM $ writeTQueue q currentTime
-                                   return $ Just (q,0,p,n-1)
-                | otherwise  -> return $ Just (q,c+1,p,n)
-  periodic_edges .= pe'
-
-  -- Check deadlines
-  de <- use deadline_edges
-  forM_ de $ \(q,n) ->
-    untilNothing (liftS $ runSTM $ tryReadTQueue q)
-                 (\a -> when ((currentTime - 1 - a) > n) (deadLineMissed a (currentTime - 1) n)
-                 )
-
   -- Sort ready list according to given method
   wake_up_threads
 
@@ -175,7 +157,7 @@ schedule = do
   -- CONSUMED, NOTHING ELSE TO DO)
   finished <- and <$> T.sequenceA [ uses ready null
                                   , uses exec_threads HashMap.null
-                                  , uses periodic_edges null
+                                  , use periodic_edges >>= (fmap null . liftS . runSTM . readTVar)
                                   ]
   if finished
     then do
@@ -216,7 +198,7 @@ schedule = do
             )
           use (components.at th) >>=
             maybe (return ()) (\cId -> liftS $ startThread cId aN th)
-      return True
+      return False
 
 killThreads :: Sched ()
 killThreads = do
@@ -229,10 +211,12 @@ readThread l     = use l >>= (liftS . runSTM . maybe (return Nothing) (fmap Just
 traceMsg         = liftS . SoOSiM.traceMsg
 traceMsgTag      = (liftS .) . SoOSiM.traceMsgTag
 
-runningScheduler aN res  = traceMsgTag ("Running " ++ aN ++ " scheduler on Node " ++ show res) ("SchedulerExec " ++ aN ++ " Proc" ++ show res)
-waitThreadMsg th aN      = traceMsgTag ("Thread " ++ show th ++ " is waiting") ("ThreadWait " ++ aN ++ ".T" ++ show th)
+onlyOnce m = do
+  currentTime <- liftS $ getTime
+  lr <- use last_run
+  when (lr < currentTime) m
+
+runningScheduler aN res  = onlyOnce $ traceMsgTag ("Running " ++ aN ++ " scheduler on Node " ++ show res) ("SchedulerExec " ++ aN ++ " Proc" ++ show res)
+waitThreadMsg th aN      = onlyOnce $ traceMsgTag ("Thread " ++ show th ++ " is waiting") ("ThreadWait " ++ aN ++ ".T" ++ show th)
 startThreadMsg th res aN = traceMsgTag ("Starting thread " ++ show th ++ " on Node " ++ show res) ("ThreadStart " ++ aN ++ ".T" ++ show th ++ " Proc" ++ show res)
 threadEncMsg th aN       = traceMsgTag ("Thread " ++ show th ++ " ready to start") ("ThreadEnqueued " ++ aN ++ ".T" ++ show th)
-deadLineMissed st et n   = traceMsgTag ("Token missed deadline of " ++ show n ++ " by " ++ show (et - st - n) ++ " cycles") ("DeadlineMissed " ++ show missed)
-  where
-    missed = et - st - n

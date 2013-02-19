@@ -22,6 +22,7 @@ import qualified SoOSiM
 import SoOSiM hiding (traceMsg)
 import SoOSiM.Components.ApplicationHandler
 import SoOSiM.Components.Common
+import SoOSiM.Components.PeriodicIO
 import SoOSiM.Components.ResourceDescriptor
 import SoOSiM.Components.ResourceManager
 import SoOSiM.Components.ResourceManager.Types
@@ -126,13 +127,22 @@ behaviour (Message _ (RunProgram fN) retAddr) = do
 
   traceMsg $ "ThreadAssignment: " ++ show th_all
 
+  -- Initialize Periodic I/O if needed
+  periodicEdgesS <- lift $ runSTM $ newTVar periodicEdges
+  unless (null periodicEdges && null deadlineEdges) $ do
+    let pIOState = PeriodicIO (periodicEdgesS,deadlineEdges,fN)
+    newId <- lift $ SoOSiM.createComponentNPS Nothing Nothing (Just pIOState) pIOState
+    pIO .= newId
+
   -- Now initialize the scheduler, passing the list of
   -- threads, and the list of resources
   threads'' <- T.mapM (lift . runSTM . newTVar) threads'
   pmId <- lift $ getComponentId
   sId  <- lift $ newScheduler pmId
   traceMsg $ "Starting scheduler"
-  lift $ initScheduler sId threads'' rc th_all (schedulerSort thread_graph) fN periodicEdges deadlineEdges
+  lift $ initScheduler sId threads'' rc th_all (schedulerSort thread_graph) fN periodicEdgesS
+
+
 
 behaviour (Message _ TerminateProgram retAddr) = do
   fN <- fmap appName $ use thread_graph
@@ -144,6 +154,10 @@ behaviour (Message _ TerminateProgram retAddr) = do
 
   -- Stop the scheduler
   lift $ stopScheduler (returnAddress retAddr)
+
+  -- Stop the periodic IO
+  pIOid <- use pIO
+  unless (pIOid < 0) (lift $ stopPIO pIOid fN)
 
   -- Stop the process manager
   lift stop
