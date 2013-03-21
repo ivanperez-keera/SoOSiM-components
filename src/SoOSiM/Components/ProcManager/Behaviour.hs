@@ -79,7 +79,7 @@ behaviour (Message _ (RunProgram fN) retAddr) = do
     -- create the list of resources
     rc <- mapM (\x ->
                   do d <- use rm >>= (\rId -> lift $ getResourceDescription rId x)
-                     return (x,fromJust d)
+                     return (x,maybe (error "fromJust: resources") id d)
                ) res
 
     -- Allocation algorithms. Here I just statically allocate

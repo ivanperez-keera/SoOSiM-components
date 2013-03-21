@@ -44,7 +44,7 @@ threadBehaviour ::
 threadBehaviour s@(TH_State _ _ Nothing _) _ = yield s
 
 threadBehaviour s (Message _ TH_Start schedId) = do
-  let ts = fromJust $ s ^. thread_state
+  let ts = maybe (error "fromJust: thread_state") id $ s ^. thread_state
   t <- runSTM $ readTVar ts
   case (t ^. execution_state) of
     Executing -> do

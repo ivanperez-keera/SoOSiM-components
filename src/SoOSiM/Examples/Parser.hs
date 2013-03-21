@@ -23,5 +23,5 @@ readExample ::
   -> IO Example
 readExample fn = do
   exampleBS <- BS.readFile fn
-  let example = fromJust $ decode exampleBS
+  let example = maybe (error "fromJust: example") id $ decode exampleBS
   return $! example
