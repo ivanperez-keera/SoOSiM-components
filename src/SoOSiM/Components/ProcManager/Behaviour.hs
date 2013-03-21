@@ -11,11 +11,14 @@ import Control.Lens
 import Control.Monad
 import Control.Monad.State.Strict
 import Control.Monad.Writer
+import           Data.Char           (toLower)
 import qualified Data.Foldable       as F
 import           Data.HashMap.Strict (HashMap)
 import qualified Data.HashMap.Strict as HashMap
+import qualified Data.List           as L
 import qualified Data.Map            as Map
 import Data.Maybe (isJust,fromJust,mapMaybe)
+import           Data.Ord
 import qualified Data.Traversable as T
 
 import qualified SoOSiM
@@ -84,7 +87,10 @@ behaviour (Message _ (RunProgram fN) retAddr) = do
 
     -- Allocation algorithms. Here I just statically allocate
     -- threads to resources in the simplest possible way
-    let th_allM = allocate_simple threads rc
+    -- let th_allM = allocate threads rc assignResourceSimple ()
+    let th_allM = case (fmap (map toLower) $ allocSort thread_graph) of
+                    Just "minwcet" -> allocate threads rc assignResourceMinWCET 0
+                    _              -> allocate threads rc assignResourceSimple ()
 
     -- Another alternative allocation strategy
     -- let th_allM = allocate_global threads' res
@@ -174,39 +180,61 @@ prepareResourceRequestListSimple ag = rl
     -- this will ask for a number of processors equal to the number of threads
     rl = [(anyRes,numberOfVertices ag)]
 
-allocate_simple ::
+allocate ::
   HashMap ThreadId Thread
   -> [(ResourceId,ResourceDescriptor)]
+  -> AssignProc a
+  -> a
   -> Maybe (HashMap ThreadId [ResourceId])
-allocate_simple threads resMap = thAll
+allocate threads resMap assignResource initR = thAll
   where
+    threads' = reverse
+             $ L.sortBy (comparing (\(_,t) -> t^.exec_cycles))
+             $ HashMap.toList threads
     -- Build the inverse of resMap
     resMapI = Map.toList $ foldl
                 (\m (rId,r) ->
                   Map.alter
                     (\x -> case x of
-                      Nothing -> Just [rId]
-                      Just rs -> Just (rId:rs)
+                      Nothing -> Just [(rId,initR)]
+                      Just rs -> Just ((rId,initR):rs)
                     ) r m
                 ) Map.empty resMap
 
     -- Load-balance resource assignment
-    thAll   = T.sequence $ snd $ T.mapAccumL
-                (\m t -> second (fmap (:[])) $ assignResource t m)
+    thAll   = fmap HashMap.fromList $ T.sequence $ snd $ T.mapAccumL
+                (\m (t_id,t) -> assignResource t m)
                 resMapI
-                threads
+                threads'
 
-    assignResource ::
-      Thread
-      -> [(ResourceDescriptor,[ResourceId])]
-      -> ([(ResourceDescriptor,[ResourceId])],Maybe ResourceId)
-    assignResource t [] = ([], Nothing)
-    assignResource t (rm@(r,(rId:rIds)):rms)
-      -- If a compatible resource is found, assign the resource
-      -- and rotate the resourceId list to balance the assignment of
-      -- threads to resources
-      | isComplient r (t^.rr) = ((r,rIds ++ [rId]):rms,Just rId)
-      | otherwise             = let (rms',rId) = assignResource t rms
-                                in  (rm:rms',rId)
+type AssignProc a =
+  Thread
+  -> [(ResourceDescriptor,[(ResourceId,a)])]
+  -> ([(ResourceDescriptor,[(ResourceId,a)])],Maybe (ThreadId,[ResourceId]))
+
+assignResourceSimple :: AssignProc ()
+assignResourceSimple t [] = ([], Nothing)
+assignResourceSimple t (rm@(r,(rId:rIds)):rms)
+  -- If a compatible resource is found, assign the resource
+  -- and rotate the resourceId list to balance the assignment of
+  -- threads to resources
+  | isComplient r (t^.rr) = ((r,rIds ++ [rId]):rms,Just $ (t^.threadId,[fst rId]))
+  | otherwise             = let (rms',rId) = assignResourceSimple t rms
+                            in  (rm:rms',rId)
+
+assignResourceMinWCET :: AssignProc Int
+assignResourceMinWCET t rms = (c_rs' ++ other_rs, rIdM)
+  where
+    (c_rs,other_rs) = L.partition (\(r,_) -> r `isComplient` (t^.rr)) rms
+    (rIdM,c_rs')    = case (map (second (L.sortBy maxUtil')) $ L.sortBy maxUtil c_rs) of
+                        []                    -> (Nothing,[])
+                        ((r,(rId:rIds)):rms)  -> (Just $ (t^.threadId,[fst rId]), (r,(second (+(t^.exec_cycles)) rId:rIds)):rms)
+
+    maxUtil :: (ResourceDescriptor,[(ResourceId,Int)]) -> (ResourceDescriptor,[(ResourceId,Int)]) -> Ordering
+    maxUtil (_,rs1) (_,rs2) = compare (map snd rs1) (map snd rs2)
+
+    maxUtil' :: (ResourceId,Int) -> (ResourceId,Int) -> Ordering
+    maxUtil' (_,u1) (_,u2) = compare u1 u2
+
 
 traceMsg = lift . SoOSiM.traceMsg

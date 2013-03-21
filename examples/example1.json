@@ -1,5 +1,6 @@
 { "Apps" : [ { "name" : "app1"
              , "scheduler" : "FIFO"
+             , "allocation" : "simple"
              , "vertices" :
                  [ { "id"                   : 1
                    , "resourceRequirements" : "ANY_RES"
@@ -39,6 +40,7 @@
              }
            , { "name" : "app2"
              , "scheduler" : "FIFO"
+             , "allocation" : "simple"
              , "vertices" :
                  [ { "id"                   : 1
                    , "resourceRequirements" : "ANY_RES"
