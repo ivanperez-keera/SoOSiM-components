@@ -15,7 +15,7 @@ import qualified Data.Foldable       as F
 import           Data.HashMap.Strict (HashMap)
 import qualified Data.HashMap.Strict as HashMap
 import qualified Data.Map            as Map
-import Data.Maybe (fromJust,mapMaybe)
+import Data.Maybe (isJust,fromJust,mapMaybe)
 import qualified Data.Traversable as T
 
 import qualified SoOSiM
@@ -95,7 +95,6 @@ behaviour (Message _ (RunProgram fN) retAddr) = do
   startTime <- lift $ getTime
   ((threads',[]), (periodicEdges,deadlineEdges)) <- runWriterT $ F.foldrM
          (\e (t,(q:qs)) -> do
-            lift $ lift $ runSTM $ replicateM (n_tokens e) (writeTQueue q startTime)
                 -- Create the in_port of the destination thread, and
                 -- initialize it with the number of tokens
             let t'  = if (end e < 0)
@@ -110,9 +109,12 @@ behaviour (Message _ (RunProgram fN) retAddr) = do
 
             -- Instantiate periodic edges
             case (periodic e) of
-              Nothing    -> return ()
-              Just (p,n) -> do lift $ lift $ runSTM $ writeTQueue q startTime
-                               tell ([(q,0,p,n-1)],[])
+              Nothing -> lift $ lift $ runSTM $ replicateM_ (n_tokens e) (writeTQueue q startTime)
+              Just p  -> case n_tokens e of
+                            0 -> return ()
+                            n -> do
+                              lift $ lift $ runSTM $ writeTQueue q startTime
+                              tell ([(q,0,p,n-1)],[])
 
             -- Instantiate deadline edges
             case (deadline e) of

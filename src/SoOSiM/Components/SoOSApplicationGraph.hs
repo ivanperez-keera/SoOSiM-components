@@ -60,7 +60,7 @@ data Edge
   { start    :: VertexId
   , end      :: VertexId
   , n_tokens :: Int
-  , periodic :: Maybe (Int,Int)
+  , periodic :: Maybe Int
   , deadline :: Maybe Int
   } deriving Show
 

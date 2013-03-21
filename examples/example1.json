@@ -72,7 +72,8 @@
                    }
                  , { "nodeOut" : -1
                    , "nodeIn"  : 1
-                   , "periodic" : [4,4]
+                   , "periodic" : 4
+                   , "ntokens" : 4
                    }
                  , { "nodeOut" : 4
                    , "nodeIn"  : -1
