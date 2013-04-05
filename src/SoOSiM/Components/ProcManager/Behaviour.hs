@@ -17,7 +17,7 @@ import           Data.HashMap.Strict (HashMap)
 import qualified Data.HashMap.Strict as HashMap
 import qualified Data.List           as L
 import qualified Data.Map            as Map
-import Data.Maybe (isJust,fromJust,mapMaybe)
+import Data.Maybe (isJust,fromJust,mapMaybe,fromMaybe)
 import           Data.Ord
 import qualified Data.Traversable as T
 
@@ -132,7 +132,7 @@ behaviour (Message _ (RunProgram fN) retAddr) = do
          (threads,tbqueues)
        $ edges thread_graph
 
-  traceMsg $ "ThreadAssignment: " ++ show th_all
+  traceMsg $ "ThreadAssignment(" ++ fromMaybe "SIMPLE" (allocSort thread_graph) ++ "): "  ++ show th_all
   periodicEdgesS <- lift $ runSTM $ newTVar periodicEdges
 
   -- Now initialize the scheduler, passing the list of
@@ -178,7 +178,7 @@ prepareResourceRequestListSimple ag = rl
     -- anyRes is a constant that means "give me any resource that you have"
 
     -- this will ask for a number of processors equal to the number of threads
-    rl = [(anyRes,numberOfVertices ag)]
+    rl = [(ANY_RES,numberOfVertices ag)]
 
 allocate ::
   HashMap ThreadId Thread

@@ -1,6 +1,6 @@
 { "Apps" : [ { "name" : "app1"
              , "scheduler" : "FIFO"
-             , "allocation" : "simple"
+             , "allocation" : "MINWCET"
              , "vertices" :
                  [ { "id"                   : 1
                    , "resourceRequirements" : "ANY_RES"
@@ -86,10 +86,10 @@
            ]
 , "Platform" :
     [ { "id"   : 0
-      , "type" : "ANY_RES"
+      , "type" : { "mem" : 5000 }
       }
     , { "id"   : 1
-      , "type" : "ANY_RES"
+      , "type" : { "mem" : 5000 }
       }
     ]
 }

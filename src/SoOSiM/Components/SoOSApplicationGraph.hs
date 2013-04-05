@@ -38,6 +38,8 @@ data Vertex
     -- resourceRequirements part. When changing ISA, this has to
     -- change (see CodeAdapter)
   , executionTime         :: Int
+    -- | (Offset,Length)
+  , memRange              :: (Int,Int)
   } deriving Show
 
 instance FromJSON Vertex where
@@ -46,7 +48,8 @@ instance FromJSON Vertex where
       (v .:  "id") <*>
       (v .:  "resourceRequirements") <*>
       (v .:? "pointerToCodeInMemory" .!= 0) <*>
-      (v .:  "executionTime")
+      (v .:  "executionTime") <*>
+      (v .:? "mem" .!= (0,0))
 
 -- | This structure represents a directed edge between two vertexes,
 -- source and destination. This edge will pass tokens from one Vertex

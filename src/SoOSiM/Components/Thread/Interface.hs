@@ -26,7 +26,7 @@ newThread ::
   ThreadId  -- ^ ThreadId
   -> Int    -- ^ Number of cycles needed to execute
   -> Thread
-newThread tId exec = Thread tId 0 0 [] [] exec anyRes Killed (-1) 0
+newThread tId exec = Thread tId 0 0 [] [] exec ANY_RES Killed (-1) 0
 
 -- | Create a new thread body / instance
 threadInstance ::
