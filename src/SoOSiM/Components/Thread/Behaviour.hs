@@ -11,7 +11,9 @@ import Data.Maybe
 import SoOSiM
 import SoOSiM.Components.Common
 
+import SoOSiM.Components.MemoryManager
 import SoOSiM.Components.Scheduler.Interface
+import SoOSiM.Components.SoOSApplicationGraph (AppCommand(..))
 import SoOSiM.Components.Thread.Interface
 import SoOSiM.Components.Thread.Types
 
@@ -52,7 +54,10 @@ threadBehaviour s (Message _ TH_Start schedId) = do
       timestamps <- runSTM $ mapM readTQueue (t ^. in_ports)
 
       -- Execute computation
-      compute ((t ^. exec_cycles) - 1) ()
+      case (t ^. program) of
+        [] -> compute ((t ^. exec_cycles) - 1) ()
+        p  -> mapM_ interp p
+
       traceMsgTag "Finished" ("ThreadEnd " ++ (s ^. appName) ++ ".T" ++ show (t ^. threadId) ++ " Proc" ++ show (t ^. res_id))
 
       -- Write to output ports
@@ -82,3 +87,8 @@ threadBehaviour s (Message _ TH_Start schedId) = do
 threadBehaviour s (Message _ TH_Stop _) = stop
 
 threadBehaviour s _ = yield s
+
+interp :: AppCommand -> Sim ()
+interp (ReadCmd (addr,sz))  = traceMsg ("Reading: " ++ show (addr,sz)) >> readMem addr sz
+interp (DelayCmd i)         = traceMsg ("Computing for: " ++ show i)   >> compute (i-1) ()
+interp (WriteCmd (addr,sz)) = traceMsg ("Writing: " ++ show (addr,sz)) >> writeMem addr sz

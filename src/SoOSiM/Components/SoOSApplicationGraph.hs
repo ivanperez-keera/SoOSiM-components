@@ -2,7 +2,7 @@
 module SoOSiM.Components.SoOSApplicationGraph where
 
 import Data.Aeson          ((.:),(.:?),(.!=),FromJSON(..),Value (..))
-import Control.Applicative ((<$>),(<*>))
+import Control.Applicative ((<$>),(<*>),(<|>))
 
 import SoOSiM
 import SoOSiM.Components.Common
@@ -40,7 +40,20 @@ data Vertex
   , executionTime         :: Int
     -- | (Offset,Length)
   , memRange              :: (Int,Int)
+  , appCommands           :: [AppCommand]
   } deriving Show
+
+data AppCommand
+  = ReadCmd  (Int,Int)
+  | DelayCmd Int
+  | WriteCmd (Int,Int)
+  deriving Show
+
+instance FromJSON AppCommand where
+  parseJSON (Object v) =
+    (ReadCmd <$> (v .: "read")) <|>
+    (DelayCmd <$> (v .: "delay")) <|>
+    (WriteCmd <$> (v .: "write"))
 
 instance FromJSON Vertex where
   parseJSON (Object v) =
@@ -49,7 +62,8 @@ instance FromJSON Vertex where
       (v .:  "resourceRequirements") <*>
       (v .:? "pointerToCodeInMemory" .!= 0) <*>
       (v .:  "executionTime") <*>
-      (v .:? "mem" .!= (0,0))
+      (v .:? "mem" .!= (0,0)) <*>
+      (v .:? "commands" .!= [])
 
 -- | This structure represents a directed edge between two vertexes,
 -- source and destination. This edge will pass tokens from one Vertex

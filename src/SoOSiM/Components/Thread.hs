@@ -20,6 +20,7 @@ module SoOSiM.Components.Thread
   , execution_state
   , res_id
   , activation_time
+  , localMem
   )
 where
 

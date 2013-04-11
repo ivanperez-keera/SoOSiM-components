@@ -7,6 +7,7 @@ import Control.Lens ((^.))
 import SoOSiM
 import SoOSiM.Components.Common
 import SoOSiM.Components.ResourceDescriptor
+import SoOSiM.Components.SoOSApplicationGraph
 
 import {-# SOURCE #-} SoOSiM.Components.Thread.Behaviour
 import SoOSiM.Components.Thread.Types
@@ -25,8 +26,10 @@ instance ComponentInterface ThreadIFace where
 newThread ::
   ThreadId  -- ^ ThreadId
   -> Int    -- ^ Number of cycles needed to execute
+  -> [AppCommand]
+  -> (Int,Int)
   -> Thread
-newThread tId exec = Thread tId 0 0 [] [] exec ANY_RES Killed (-1) 0
+newThread tId exec prg mem = Thread tId 0 0 [] [] exec ANY_RES Killed (-1) 0 prg mem
 
 -- | Create a new thread body / instance
 threadInstance ::

@@ -5,18 +5,35 @@
                  [ { "id"                   : 1
                    , "resourceRequirements" : "ANY_RES"
                    , "executionTime"        : 1
+                   , "mem"                  : [ 0, 100 ]
+                   , "commands"             : [ { "read"  : [0,25] }
+                                              , { "delay" : 1 }
+                                              , { "write" : [25,25] }
+                                              ]
                    }
                  , { "id"                   : 2
                    , "resourceRequirements" : "ANY_RES"
                    , "executionTime"        : 1
+                   , "commands"             : [ { "read" : [25,25] }
+                                              , { "delay" : 1 }
+                                              , { "write" : [50,25] }
+                                              ]
                    }
                  , { "id"                   : 3
                    , "resourceRequirements" : "ANY_RES"
                    , "executionTime"        : 4
+                   , "commands"             : [ { "read" : [50,25] }
+                                              , { "delay" : 3 }
+                                              , { "write" : [75,25] }
+                                              ]
                    }
                  , { "id"                   : 4
                    , "resourceRequirements" : "ANY_RES"
                    , "executionTime"        : 1
+                   , "commands"             : [ { "read" : [75,25] }
+                                              , { "delay" : 1 }
+                                              , { "write" : [0,25] }
+                                              ]
                    }
                  ]
              , "edges" :

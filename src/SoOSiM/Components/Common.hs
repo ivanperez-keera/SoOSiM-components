@@ -46,3 +46,8 @@ untilNothing mf mu = do
   case aM of
     Nothing -> return ()
     Just a  -> mu a >> untilNothing mf mu
+
+(><) :: (a -> b) -> (c -> d) -> (a,c) -> (b,d)
+(f >< g) (a,b) = (f a, g b)
+
+dot = (.) . (.)

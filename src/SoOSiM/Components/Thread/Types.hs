@@ -6,6 +6,7 @@ import Control.Concurrent.STM.TQueue
 
 import SoOSiM.Components.Common
 import SoOSiM.Components.ResourceDescriptor
+import SoOSiM.Components.SoOSApplicationGraph
 
 data ThreadState = Blocked | Waiting | Executing | Killed
   deriving Eq
@@ -37,6 +38,8 @@ data Thread
     -- moved from blocked to ready.
     -- it can be needed to sort ready thread in FIFO order
   , _activation_time :: Int
+  , _program         :: [AppCommand]
+  , _localMem        :: (Int,Int)
   }
 
 makeLenses ''Thread

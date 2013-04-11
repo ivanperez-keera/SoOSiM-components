@@ -93,7 +93,7 @@ thread_completed th = do
     exec_threads.at th .= Nothing
 
     -- Signal that the resource is free
-    res_map._at res .= IDLE_RES
+    res_map.ix res .= IDLE_RES
     -- Insert thread 'th' into the blocked vector
     blocked %= (++ [th])
 
@@ -128,7 +128,7 @@ find_free_resource :: ThreadId -> Sched (Maybe ResourceId)
 find_free_resource thId = do
   rt_map    <- use res_types
   rm_map    <- use res_map
-  resIds    <- use (thread_res_allocation._at thId)
+  resIds    <- use (thread_res_allocation.ix thId)
   (Just th) <- readThread (thread_list.at thId)
   -- The resource is choosen only among the
   -- ones on which the task has been allocated
@@ -179,7 +179,7 @@ schedule = do
           -- remove from the ready list
           ready %= (delete th)
           -- Execute th on res
-          res_map._at res .= BUSY_RES
+          res_map.ix res .= BUSY_RES
           exec_threads.at th ?= res
 
           -- create thread instance on the node if it was killed

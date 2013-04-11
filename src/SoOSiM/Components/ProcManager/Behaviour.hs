@@ -25,6 +25,7 @@ import qualified SoOSiM
 import SoOSiM hiding (traceMsg)
 import SoOSiM.Components.ApplicationHandler
 import SoOSiM.Components.Common
+import SoOSiM.Components.MemoryManager
 import SoOSiM.Components.PeriodicIO
 import SoOSiM.Components.ResourceDescriptor
 import SoOSiM.Components.ResourceManager
@@ -54,7 +55,12 @@ behaviour (Message _ (RunProgram fN) retAddr) = do
 
   -- Create all threads
   let threads = HashMap.fromList
-              $ map (\v -> (v_id v, newThread (v_id v) (executionTime v)))
+              $ map (\v -> ( v_id v
+                           , newThread (v_id v)
+                                       (executionTime v)
+                                       (appCommands v)
+                                       (memRange v)
+                           ))
               $ vertices thread_graph
 
   (th_all,rc) <- untilJust $ do
@@ -134,6 +140,14 @@ behaviour (Message _ (RunProgram fN) retAddr) = do
 
   traceMsg $ "ThreadAssignment(" ++ fromMaybe "SIMPLE" (allocSort thread_graph) ++ "): "  ++ show th_all
   periodicEdgesS <- lift $ runSTM $ newTVar periodicEdges
+
+  mmMasterId <- lift $ createMemoryManager Nothing Nothing
+
+  -- Instantiate memory managers on those nodes where threads are assigned
+  forM_ (HashMap.toList th_all) $ \(tId,(rId:_)) ->
+    do mmId <- lift $ createMemoryManager (Just rId) (Just mmMasterId)
+       let (b,s) = (threads HashMap.! tId) ^. localMem
+       unless (b == 0 && s == 0) $ lift $ registerMem (Just mmId) b s
 
   -- Now initialize the scheduler, passing the list of
   -- threads, and the list of resources
