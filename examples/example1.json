@@ -1,5 +1,57 @@
 { "Apps" : [ { "name" : "app1"
-             , "scheduler" : "FIFO"
+             , "scheduler" : "EDF"
+             , "allocation" : "MINWCET"
+             , "vertices" :
+                 [ { "id"                   : 1
+                   , "resourceRequirements" : "ANY_RES"
+                   , "executionTime"        : 1
+                   }
+                 , { "id"                   : 2
+                   , "resourceRequirements" : "ANY_RES"
+                   , "executionTime"        : 2
+                   }
+                 , { "id"                   : 3
+                   , "resourceRequirements" : "ANY_RES"
+                   , "executionTime"        : 2
+                   }
+                 , { "id"                   : 4
+                   , "resourceRequirements" : "ANY_RES"
+                   , "executionTime"        : 2
+                   }
+                 , { "id"                   : 5
+                   , "resourceRequirements" : "ANY_RES"
+                   , "executionTime"        : 1
+                   }
+                 ]
+             , "edges" :
+                 [ { "nodeOut" : 1
+                   , "nodeIn"  : 2
+                   }
+                 , { "nodeOut" : 1
+                   , "nodeIn"  : 3
+                   }
+                 , { "nodeOut" : 1
+                   , "nodeIn"  : 4
+                   }
+                 , { "nodeOut" : 2
+                   , "nodeIn"  : 5
+                   , "deadline" : 7
+                   }
+                 , { "nodeOut" : 3
+                   , "nodeIn"  : 5
+                   , "deadline" : 3
+                   }
+                 , { "nodeOut" : 4
+                   , "nodeIn"  : 5
+                   }
+                 , { "nodeOut" : -1
+                   , "nodeIn"  : 1
+                   , "ntokens" : 3
+                   }
+                 ]
+             }
+           , { "name" : "app2"
+             , "scheduler" : "EDF"
              , "allocation" : "MINWCET"
              , "vertices" :
                  [ { "id"                   : 1
@@ -42,12 +94,15 @@
                    }
                  , { "nodeOut" : 1
                    , "nodeIn"  : 3
+                   , "deadline" : 2
                    }
                  , { "nodeOut" : 2
                    , "nodeIn"  : 4
+                   , "deadline" : 3
                    }
                  , { "nodeOut" : 3
                    , "nodeIn"  : 4
+                   , "deadline" : 8
                    }
                  , { "nodeOut" : -1
                    , "nodeIn"  : 1
@@ -55,7 +110,7 @@
                    }
                  ]
              }
-           , { "name" : "app2"
+           , { "name" : "app3"
              , "scheduler" : "FIFO"
              , "allocation" : "simple"
              , "vertices" :
@@ -103,9 +158,6 @@
            ]
 , "Platform" :
     [ { "id"   : 0
-      , "type" : { "mem" : 5000 }
-      }
-    , { "id"   : 1
       , "type" : { "mem" : 5000 }
       }
     ]

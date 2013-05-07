@@ -17,7 +17,7 @@ import           Data.HashMap.Strict (HashMap)
 import qualified Data.HashMap.Strict as HashMap
 import qualified Data.List           as L
 import qualified Data.Map            as Map
-import Data.Maybe (isJust,fromJust,mapMaybe,fromMaybe)
+import Data.Maybe (catMaybes,isJust,fromJust,mapMaybe,fromMaybe)
 import           Data.Ord
 import qualified Data.Traversable as T
 
@@ -54,14 +54,16 @@ behaviour (Message _ (RunProgram fN) retAddr) = do
   thread_graph <- lift $ applicationHandler >>= flip loadProgram fN
 
   -- Create all threads
+  let deadlines = map (inferDeadline (edges thread_graph)) (vertices thread_graph)
   let threads = HashMap.fromList
-              $ map (\v -> ( v_id v
-                           , newThread (v_id v)
-                                       (executionTime v)
-                                       (appCommands v)
-                                       (memRange v)
-                           ))
-              $ vertices thread_graph
+              $ zipWith (\v d -> ( v_id v
+                                 , newThread (v_id v)
+                                             (executionTime v)
+                                             (appCommands v)
+                                             (memRange v)
+                                             d
+                                 ))
+                (vertices thread_graph) deadlines
 
   (th_all,rc) <- untilJust $ do
     -- Now we have to contact the Resource Manager
@@ -121,17 +123,17 @@ behaviour (Message _ (RunProgram fN) retAddr) = do
 
             -- Instantiate periodic edges
             case (periodic e) of
-              Nothing -> lift $ lift $ runSTM $ replicateM_ (n_tokens e) (writeTQueue q startTime)
+              Nothing -> lift $ lift $ runSTM $ replicateM_ (n_tokens e) (writeTQueue q (startTime,startTime))
               Just p  -> case n_tokens e of
                             0 -> return ()
                             n -> do
-                              lift $ lift $ runSTM $ writeTQueue q startTime
+                              lift $ lift $ runSTM $ writeTQueue q (startTime,startTime)
                               tell ([(q,0,p,n-1)],[])
 
             -- Instantiate deadline edges
             case (deadline e) of
               Nothing -> return ()
-              Just n  -> tell ([],[(q,n,fN,start e)])
+              Just n  -> tell ([],[(q,n,fN,start e,(-1))])
 
             return (t'',qs)
          )
@@ -250,5 +252,11 @@ assignResourceMinWCET t rms = (c_rs' ++ other_rs, rIdM)
     maxUtil' :: (ResourceId,Int) -> (ResourceId,Int) -> Ordering
     maxUtil' (_,u1) (_,u2) = compare u1 u2
 
+inferDeadline :: [Edge] -> Vertex -> Deadline
+inferDeadline es v = case dls of {[] -> Infinity ; _ -> Exact . head $ L.sort dls}
+  where
+    vId = v_id v
+    es' = filter ((== vId) . start) es
+    dls = catMaybes $ map deadline es'
 
 traceMsg = lift . SoOSiM.traceMsg

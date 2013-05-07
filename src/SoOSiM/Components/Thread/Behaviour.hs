@@ -61,8 +61,9 @@ threadBehaviour s (Message _ TH_Start schedId) = do
       traceMsgTag "Finished" ("ThreadEnd " ++ (s ^. appName) ++ ".T" ++ show (t ^. threadId) ++ " Proc" ++ show (t ^. res_id))
 
       -- Write to output ports
-      let newTime = minimum timestamps
-      runSTM $ mapM_ (\(_,q) -> writeTQueue q newTime) (t^.out_ports)
+      currentTime <- getTime
+      let newTime = minimum $ map fst timestamps
+      runSTM $ mapM_ (\(_,q) -> writeTQueue q (newTime,currentTime)) (t^.out_ports)
 
       -- Signal scheduler that thread has completed
       runSTM $ modifyTVar' ts (execution_state .~ Waiting)

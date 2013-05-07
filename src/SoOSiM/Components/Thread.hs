@@ -3,6 +3,7 @@ module SoOSiM.Components.Thread
   -- * Types
     Thread (..)
   , ThreadState (..)
+  , Deadline (..)
   -- * Creating threads
   , threadInstance
   , newThread

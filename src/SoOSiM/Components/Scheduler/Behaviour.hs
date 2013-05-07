@@ -66,6 +66,7 @@ behaviour (Message _ (Init tl res th_all smM an pE) retAddr) = do
   sortingMethod         .= (maybe' smM byArrivalTime $
                               (\sm -> case map toLower sm of
                                   "fifo" -> byArrivalTime
+                                  "edf"  -> byDeadline
                                   _      -> error $ "Non-existent scheduling method: " ++ sm
                               ))
 

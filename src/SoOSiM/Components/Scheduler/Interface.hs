@@ -46,7 +46,7 @@ initScheduler ::
   -> HashMap ThreadId [ResourceId]
   -> Maybe String
   -> String
-  -> TVar [(TQueue Int,Int,Int,Int)]
+  -> TVar [(TQueue (Int,Int),Int,Int,Int)]
   -> Sim ()
 initScheduler cId th res th_all smM an pE =
   notify Scheduler cId (Init th res th_all smM an pE)

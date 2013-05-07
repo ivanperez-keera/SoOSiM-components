@@ -5,6 +5,7 @@ module SoOSiM.Components.PeriodicIO where
 import Control.Concurrent.STM
 import Control.Concurrent.STM.TQueue
 import Control.Monad
+import Data.List
 import Data.Maybe
 
 import SoOSiM
@@ -13,8 +14,8 @@ import SoOSiM.Components.Scheduler
 
 newtype PeriodicIO = PeriodicIO String
 
-newtype PeriodicIOS = PeriodicIOS ( TVar [(TQueue Int,Int,Int,Int)]
-                                  , [(TQueue Int,Int,String,Int)]
+newtype PeriodicIOS = PeriodicIOS ( TVar [(TQueue (Int,Int),Int,Int,Int)]
+                                  , [(TQueue (Int,Int),Int,String,Int,Int)]
                                   , ComponentId
                                   )
 
@@ -41,18 +42,19 @@ periodicIO s@(PeriodicIOS (qsS,ds,sId)) _ = do
   qs' <- fmap catMaybes $ forM qs $ \(q,c,p,n) -> do
             case n of
               0 -> return Nothing
-              n | c == (p-1) -> do runSTM $ writeTQueue q currentTime
+              n | c == (p-1) -> do runSTM $ writeTQueue q (currentTime,currentTime)
                                    newIOToken sId
                                    return $ Just (q,0,p,n-1)
                 | otherwise  -> return $ Just (q,c+1,p,n)
   runSTM $ writeTVar qsS qs'
 
-  forM_ ds $ \(q,n,fN,tid) ->
-    untilNothing (runSTM $ tryReadTQueue q)
-                 (\d -> when ((currentTime - d) > n) (deadLineMissed d currentTime n fN tid)
-                 )
+  ds' <- forM ds $ \(q,n,fN,tid,latest) -> do { ds <- fmap sort $ runSTM $ peek q
+                                              ; forM_ ds $ (\(d,l) -> when ((currentTime - d) > n && l > latest) (deadLineMissed d currentTime n fN tid))
+                                              ; let latest' = case ds of { [] -> latest; _ -> maximum $ map snd ds }
+                                              ; return (q,n,fN,tid,latest')
+                                              }
 
-  return s
+  return (PeriodicIOS (qsS,ds',sId))
 
 stopPIO :: ComponentId -> String -> Sim ()
 stopPIO cId n = notify (PeriodicIO n) cId PIO_Stop
@@ -63,4 +65,15 @@ deadLineMissed st et n fN tid =
   where
     missed = et - st - n
     appThread = fN ++ ".T" ++ show tid
+
+peek :: TQueue a -> STM [a]
+peek q = do
+    k <- fmap reverse $ peek' []
+    forM k (unGetTQueue q)
+    return k
+  where
+    peek' l = do v <- tryReadTQueue q
+                 case v of
+                   Nothing -> return l
+                   Just v' -> peek' (v':l)
 

@@ -11,6 +11,15 @@ import SoOSiM.Components.SoOSApplicationGraph
 data ThreadState = Blocked | Waiting | Executing | Killed
   deriving Eq
 
+data Deadline = Infinity | Exact Int
+  deriving Eq
+
+instance Ord Deadline where
+  compare Infinity Infinity   = EQ
+  compare (Exact i) Infinity  = LT
+  compare Infinity (Exact i)  = GT
+  compare (Exact i) (Exact j) = compare i j
+
 data Thread
   = Thread
   { -- | The thread unique id
@@ -20,11 +29,11 @@ data Thread
     -- | number of outgoing \"ports\", each out-port has an id form 0 to (n_in - 1)
   , _n_out           :: Int
     -- | incoming ports: ntokens per port
-  , _in_ports        :: [TQueue Int]
+  , _in_ports        :: [TQueue (Int,Int)]
     -- | outgoing links
     --
     -- contains the pair (thread_dest_id, in_port_id) of the destination threads
-  , _out_ports       :: [(ThreadId,TQueue Int)]
+  , _out_ports       :: [(ThreadId,TQueue (Int,Int))]
     -- | Number of (simulation) cycles needed to complete one instance of the thread
   , _exec_cycles     :: Int
     -- | resource requirements
@@ -40,6 +49,7 @@ data Thread
   , _activation_time :: Int
   , _program         :: [AppCommand]
   , _localMem        :: (Int,Int)
+  , _relativeDeadline :: Deadline
   }
 
 makeLenses ''Thread
