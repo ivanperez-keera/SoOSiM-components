@@ -17,7 +17,7 @@ import SoOSiM.Examples.Parser
 
 loader :: FilePath -> IO SimState
 loader f = do
-  (Example apps rs) <- readExample f
+  (Example apps dist rs) <- readExample f
 
   initSim (res_id $ head rs) $ do
     traceMsg "Start the application handler"
@@ -25,7 +25,7 @@ loader f = do
     addPrograms ahId (HashMap.fromList (zip (map appName apps) apps))
 
     traceMsg "Start the resource manager"
-    rmId <- resourceManager
+    rmId <- resourceManager dist
     sequence_ $ zipWith
                   (\(Resource nId resT) r -> do
                       rId <- r nId

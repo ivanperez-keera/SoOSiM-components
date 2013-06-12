@@ -16,15 +16,17 @@ instance ComponentInterface ResourceManager where
   type State ResourceManager   = RM_State
   type Receive ResourceManager = RM_Cmd
   type Send ResourceManager    = RM_Msg
-  initState                    = const (RM_State empty [] [])
+  initState                    = const (RM_State empty empty [] [] "all")
   componentName                = const "Resource Manager"
   componentBehaviour           = const behaviour
 
-resourceManager :: Sim ComponentId
-resourceManager = do
-  componentLookup ResourceManager >>= \x -> case x of
-    Nothing  -> createComponent ResourceManager
-    Just cId -> return cId
+resourceManager :: String -> Sim ComponentId
+resourceManager dist = do
+    componentLookup ResourceManager >>= \x -> case x of
+      Nothing  -> createComponentNPS Nothing Nothing (Just iState) ResourceManager
+      Just cId -> return cId
+  where
+    iState = RM_State empty empty [] [] dist
 
 addResource :: ComponentId -> ResourceId -> ResourceDescriptor -> Sim ()
 addResource cId rId rd = notify ResourceManager cId (AddResource rId rd)

@@ -10,12 +10,13 @@ import SoOSiM.Components.ResourceDescriptor
 import SoOSiM.Components.SoOSApplicationGraph
 
 data Example
-  = Example [ApplicationGraph] [Resource]
+  = Example [ApplicationGraph] String [Resource]
 
 instance FromJSON Example where
   parseJSON (Object v) =
     Example <$>
       (v .: "Apps") <*>
+      (v .: "Distribution") <*>
       (v .: "Platform")
 
 readExample ::

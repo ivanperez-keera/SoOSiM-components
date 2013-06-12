@@ -1,14 +1,19 @@
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE DeriveGeneric     #-}
 module SoOSiM.Components.ResourceDescriptor where
 
 import Control.Applicative ((<$>),(<*>),pure)
 import Data.Aeson ((.:),(.:?),(.!=),FromJSON(..),Value (..))
+import GHC.Generics (Generic)
+import Data.Hashable (Hashable)
 
 import SoOSiM
 import SoOSiM.Components.Common
 
 data ISA = ANY_ISA | X86 | ARM | SPARC
-  deriving (Eq,Ord,Show)
+  deriving (Eq,Ord,Show,Generic)
+
+instance Hashable ISA
 
 instance FromJSON ISA where
   parseJSON (String "x86")   = pure X86
@@ -23,7 +28,9 @@ data ResourceDescriptor
   | ResourceDescriptor
     { isa_id   :: ISA
     , mem_size :: Int
-    } deriving (Ord,Show)
+    } deriving (Ord,Show,Generic)
+
+instance Hashable ResourceDescriptor
 
 instance Eq ResourceDescriptor where
   ANY_RES == _ = True

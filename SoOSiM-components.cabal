@@ -73,6 +73,7 @@ library
                       bytestring           >= 0.9.2.1,
                       containers           >= 0.4.2.1,
                       filepath             >= 1.3.0.0,
+                      hashable             >= 1.2.0.7,
                       lens                 >= 3.7.0.2,
                       mtl                  >= 2.1.2,
                       SoOSiM               >= 0.2.4.0,

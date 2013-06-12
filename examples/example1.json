@@ -156,6 +156,7 @@
                  ]
              }
            ]
+, "Distribution" : "all"
 , "Platform" :
     [ { "id"   : 0
       , "type" : { "mem" : 5000 }
