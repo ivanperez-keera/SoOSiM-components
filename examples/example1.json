@@ -1,164 +1,198 @@
-{ "Apps" : [ { "name" : "app1"
-             , "scheduler" : "EDF"
-             , "allocation" : "MINWCET"
+{ "Apps" : [ { "name"       : "app1"
+             , "scheduler"  : "FIFO"
+             , "allocation" : "SIMPLE"
              , "vertices" :
                  [ { "id"                   : 1
                    , "resourceRequirements" : "ANY_RES"
-                   , "executionTime"        : 1
-                   }
-                 , { "id"                   : 2
-                   , "resourceRequirements" : "ANY_RES"
-                   , "executionTime"        : 2
-                   }
-                 , { "id"                   : 3
-                   , "resourceRequirements" : "ANY_RES"
-                   , "executionTime"        : 2
+                   , "executionTime"        : 4
+                   , "mem"                  : [ 0, 8 ]
+                   , "commands"             : [ { "read"  : [0,4] }
+                                              , { "delay" : 4 }
+                                              , { "write" : [4,4] }
+                                              ]
                    }
                  , { "id"                   : 4
                    , "resourceRequirements" : "ANY_RES"
                    , "executionTime"        : 2
+                   , "commands"             : [ { "read"  : [5,1] }
+                                              , { "read"  : [6,1] }
+                                              , { "delay" : 2 }
+                                              , { "write" : [0,1] }
+                                              ]
                    }
                  , { "id"                   : 5
                    , "resourceRequirements" : "ANY_RES"
-                   , "executionTime"        : 1
+                   , "executionTime"        : 2
+                   , "commands"             : [ { "read"  : [4,1] }
+                                              , { "read"  : [7,1] }
+                                              , { "delay" : 2 }
+                                              , { "write" : [1,1] }
+                                              ]
+                   }
+                 , { "id"                   : 6
+                   , "resourceRequirements" : "ANY_RES"
+                   , "executionTime"        : 2
+                   , "commands"             : [ { "read"  : [4,1] }
+                                              , { "read"  : [7,1] }
+                                              , { "delay" : 2 }
+                                              , { "write" : [2,1] }
+                                              ]
+                   }
+                 , { "id"                   : 7
+                   , "resourceRequirements" : "ANY_RES"
+                   , "executionTime"        : 2
+                   , "commands"             : [ { "read"  : [5,1] }
+                                              , { "read"  : [6,1] }
+                                              , { "delay" : 2 }
+                                              , { "write" : [3,1] }
+                                              ]
                    }
                  ]
              , "edges" :
-                 [ { "nodeOut" : 1
-                   , "nodeIn"  : 2
-                   }
-                 , { "nodeOut" : 1
-                   , "nodeIn"  : 3
+                 [ { "nodeOut" : -1
+                   , "nodeIn"  : 1
+                   , "ntokens" : 10
                    }
                  , { "nodeOut" : 1
                    , "nodeIn"  : 4
                    }
-                 , { "nodeOut" : 2
-                   , "nodeIn"  : 5
-                   , "deadline" : 7
-                   }
-                 , { "nodeOut" : 3
-                   , "nodeIn"  : 5
-                   , "deadline" : 3
-                   }
                  , { "nodeOut" : 4
+                   , "nodeIn"  : 1
+                   , "ntokens" : 1
+                   }
+                 , { "nodeOut" : 1
                    , "nodeIn"  : 5
                    }
-                 , { "nodeOut" : -1
+                 , { "nodeOut" : 5
                    , "nodeIn"  : 1
-                   , "ntokens" : 3
+                   , "ntokens" : 1
+                   }
+                 , { "nodeOut" : 1
+                   , "nodeIn"  : 6
+                   }
+                 , { "nodeOut" : 6
+                   , "nodeIn"  : 1
+                   , "ntokens" : 1
+                   }
+                 , { "nodeOut" : 1
+                   , "nodeIn"  : 7
+                   }
+                 , { "nodeOut" : 7
+                   , "nodeIn"  : 1
+                   , "ntokens" : 1
                    }
                  ]
              }
-           , { "name" : "app2"
-             , "scheduler" : "EDF"
-             , "allocation" : "MINWCET"
+           , { "name"       : "app2"
+             , "scheduler"  : "FIFO"
+             , "allocation" : "SIMPLE"
              , "vertices" :
                  [ { "id"                   : 1
                    , "resourceRequirements" : "ANY_RES"
-                   , "executionTime"        : 1
-                   , "mem"                  : [ 0, 100 ]
-                   , "commands"             : [ { "read"  : [0,25] }
-                                              , { "delay" : 1 }
-                                              , { "write" : [25,25] }
-                                              ]
-                   }
-                 , { "id"                   : 2
-                   , "resourceRequirements" : "ANY_RES"
-                   , "executionTime"        : 1
-                   , "commands"             : [ { "read" : [25,25] }
-                                              , { "delay" : 1 }
-                                              , { "write" : [50,25] }
-                                              ]
-                   }
-                 , { "id"                   : 3
-                   , "resourceRequirements" : "ANY_RES"
                    , "executionTime"        : 4
-                   , "commands"             : [ { "read" : [50,25] }
-                                              , { "delay" : 3 }
-                                              , { "write" : [75,25] }
+                   , "mem"                  : [ 0, 8 ]
+                   , "commands"             : [ { "read"  : [0,4] }
+                                              , { "delay" : 4 }
+                                              , { "write" : [4,4] }
                                               ]
                    }
                  , { "id"                   : 4
                    , "resourceRequirements" : "ANY_RES"
-                   , "executionTime"        : 1
-                   , "commands"             : [ { "read" : [75,25] }
-                                              , { "delay" : 1 }
-                                              , { "write" : [0,25] }
+                   , "executionTime"        : 2
+                   , "commands"             : [ { "read"  : [5,1] }
+                                              , { "read"  : [6,1] }
+                                              , { "delay" : 2 }
+                                              , { "write" : [0,1] }
+                                              ]
+                   }
+                 , { "id"                   : 5
+                   , "resourceRequirements" : "ANY_RES"
+                   , "executionTime"        : 2
+                   , "commands"             : [ { "read"  : [4,1] }
+                                              , { "read"  : [7,1] }
+                                              , { "delay" : 2 }
+                                              , { "write" : [1,1] }
+                                              ]
+                   }
+                 , { "id"                   : 6
+                   , "resourceRequirements" : "ANY_RES"
+                   , "executionTime"        : 2
+                   , "commands"             : [ { "read"  : [4,1] }
+                                              , { "read"  : [7,1] }
+                                              , { "delay" : 2 }
+                                              , { "write" : [2,1] }
+                                              ]
+                   }
+                 , { "id"                   : 7
+                   , "resourceRequirements" : "ANY_RES"
+                   , "executionTime"        : 2
+                   , "commands"             : [ { "read"  : [5,1] }
+                                              , { "read"  : [6,1] }
+                                              , { "delay" : 2 }
+                                              , { "write" : [3,1] }
                                               ]
                    }
                  ]
              , "edges" :
-                 [ { "nodeOut" : 1
-                   , "nodeIn"  : 2
+                 [ { "nodeOut" : -1
+                   , "nodeIn"  : 1
+                   , "ntokens" : 10
                    }
                  , { "nodeOut" : 1
-                   , "nodeIn"  : 3
-                   , "deadline" : 2
-                   }
-                 , { "nodeOut" : 2
                    , "nodeIn"  : 4
-                   , "deadline" : 3
-                   }
-                 , { "nodeOut" : 3
-                   , "nodeIn"  : 4
-                   , "deadline" : 8
-                   }
-                 , { "nodeOut" : -1
-                   , "nodeIn"  : 1
-                   , "ntokens" : 4
-                   }
-                 ]
-             }
-           , { "name" : "app3"
-             , "scheduler" : "FIFO"
-             , "allocation" : "simple"
-             , "vertices" :
-                 [ { "id"                   : 1
-                   , "resourceRequirements" : "ANY_RES"
-                   , "executionTime"        : 1
-                   }
-                 , { "id"                   : 2
-                   , "resourceRequirements" : "ANY_RES"
-                   , "executionTime"        : 1
-                   }
-                 , { "id"                   : 3
-                   , "resourceRequirements" : "ANY_RES"
-                   , "executionTime"        : 4
-                   }
-                 , { "id"                   : 4
-                   , "resourceRequirements" : "ANY_RES"
-                   , "executionTime"        : 1
-                   }
-                 ]
-             , "edges" :
-                 [ { "nodeOut" : 1
-                   , "nodeIn"  : 2
-                   }
-                 , { "nodeOut" : 1
-                   , "nodeIn"  : 3
-                   }
-                 , { "nodeOut" : 2
-                   , "nodeIn"  : 4
-                   }
-                 , { "nodeOut" : 3
-                   , "nodeIn"  : 4
-                   }
-                 , { "nodeOut" : -1
-                   , "nodeIn"  : 1
-                   , "periodic" : 4
-                   , "ntokens" : 4
                    }
                  , { "nodeOut" : 4
-                   , "nodeIn"  : -1
-                   , "deadline" : 2
+                   , "nodeIn"  : 1
+                   , "ntokens" : 1
+                   }
+                 , { "nodeOut" : 1
+                   , "nodeIn"  : 5
+                   }
+                 , { "nodeOut" : 5
+                   , "nodeIn"  : 1
+                   , "ntokens" : 1
+                   }
+                 , { "nodeOut" : 1
+                   , "nodeIn"  : 6
+                   }
+                 , { "nodeOut" : 6
+                   , "nodeIn"  : 1
+                   , "ntokens" : 1
+                   }
+                 , { "nodeOut" : 1
+                   , "nodeIn"  : 7
+                   }
+                 , { "nodeOut" : 7
+                   , "nodeIn"  : 1
+                   , "ntokens" : 1
                    }
                  ]
              }
            ]
-, "Distribution" : "all"
+, "Distribution" : "half"
 , "Platform" :
     [ { "id"   : 0
+      , "type" : { "mem" : 5000 }
+      }
+    , { "id"   : 1
+      , "type" : { "mem" : 5000 }
+      }
+    , { "id"   : 2
+      , "type" : { "mem" : 5000 }
+      }
+    , { "id"   : 3
+      , "type" : { "mem" : 5000 }
+      }
+    , { "id"   : 4
+      , "type" : { "mem" : 5000 }
+      }
+    , { "id"   : 5
+      , "type" : { "mem" : 5000 }
+      }
+    , { "id"   : 6
+      , "type" : { "mem" : 5000 }
+      }
+    , { "id"   : 7
       , "type" : { "mem" : 5000 }
       }
     ]

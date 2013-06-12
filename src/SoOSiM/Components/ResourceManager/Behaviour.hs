@@ -26,6 +26,7 @@ behaviour s (Message _ (RequestResources appId rsList) retAddr) = do
   let (free',ids) = assignFree s rsList
       busy        = map (,appId) ids
       s'          = s { free_resources = free', busy_resources = busy ++ (busy_resources s) }
+  traceMsg ("REQ: " ++ show (rsList,ids))
   respond ResourceManager retAddr (RM_Resources ids)
   yield s'
 
@@ -54,7 +55,10 @@ checkFree dm free (keys,needed)
 assignFree :: RM_State -> ResourceRequestList -> (ResourceFreeList,[ResourceId])
 assignFree s rsList = (free',givenIds)
   where
-    available        = map (\(rTy,_) -> HashMap.lookupDefault [] rTy (resources_inv s)) rsList
+    available        = map (\(rTy,_) -> concat $
+                                        HashMap.elems $
+                                        HashMap.filterWithKey (\k _ -> isComplient k rTy) (resources_inv s)
+                           ) rsList
     wanted           = zip available (map snd rsList)
     dm               = map toLower (dist_method s)
     (free',givenIds) = second concat $ mapAccumR (checkFree dm) (free_resources s) wanted
