@@ -12,6 +12,7 @@ import SoOSiM.Components.ProcManager
 import SoOSiM.Components.ResourceManager
 import SoOSiM.Components.Scheduler
 import SoOSiM.Components.SoOSApplicationGraph
+import SoOSiM.Components.MemoryManager
 
 import SoOSiM.Examples.Parser
 
@@ -31,6 +32,11 @@ loader f = do
                       rId <- r nId
                       addResource rmId rId resT
                   ) rs ((const getNodeId):(repeat (\r -> createNodeN r >> return r)))
+
+    curNodeId <- getNodeId
+    mmMaster <- createMemoryManager (Just curNodeId) Nothing
+    mmSlaves <- mapM (\(Resource nId _) -> createMemoryManager (Just nId) (Just mmMaster))
+                $ tail rs
 
     forM_ (map appName apps) $ \a -> do
       traceMsg "Start the process manager"

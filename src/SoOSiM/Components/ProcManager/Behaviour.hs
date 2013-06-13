@@ -71,7 +71,9 @@ behaviour (Message _ (RunProgram fN) retAddr) = do
     -- prepares a list of resource requirements,
     -- for each resource description this list contains
     -- the number of desired resources
-    let rl = prepareResourceRequestListSimple thread_graph
+    let rl = case (recSpec thread_graph) of
+               Just rl' -> rl'
+               Nothing  -> prepareResourceRequestListSimple thread_graph
 
     -- the resource manager for this Process manager should be
     -- uniquely identified. here I am assuming that we have a

@@ -1,6 +1,7 @@
 { "Apps" : [ { "name"       : "app1"
              , "scheduler"  : "FIFO"
              , "allocation" : "SIMPLE"
+             , "resourceSpecification" : [ [ "ANY_RES" , 3 ] ]
              , "vertices" :
                  [ { "id"                   : 1
                    , "resourceRequirements" : "ANY_RES"
@@ -51,92 +52,7 @@
              , "edges" :
                  [ { "nodeOut" : -1
                    , "nodeIn"  : 1
-                   , "ntokens" : 10
-                   }
-                 , { "nodeOut" : 1
-                   , "nodeIn"  : 4
-                   }
-                 , { "nodeOut" : 4
-                   , "nodeIn"  : 1
-                   , "ntokens" : 1
-                   }
-                 , { "nodeOut" : 1
-                   , "nodeIn"  : 5
-                   }
-                 , { "nodeOut" : 5
-                   , "nodeIn"  : 1
-                   , "ntokens" : 1
-                   }
-                 , { "nodeOut" : 1
-                   , "nodeIn"  : 6
-                   }
-                 , { "nodeOut" : 6
-                   , "nodeIn"  : 1
-                   , "ntokens" : 1
-                   }
-                 , { "nodeOut" : 1
-                   , "nodeIn"  : 7
-                   }
-                 , { "nodeOut" : 7
-                   , "nodeIn"  : 1
-                   , "ntokens" : 1
-                   }
-                 ]
-             }
-           , { "name"       : "app2"
-             , "scheduler"  : "FIFO"
-             , "allocation" : "SIMPLE"
-             , "vertices" :
-                 [ { "id"                   : 1
-                   , "resourceRequirements" : "ANY_RES"
-                   , "executionTime"        : 4
-                   , "mem"                  : [ 0, 8 ]
-                   , "commands"             : [ { "read"  : [0,4] }
-                                              , { "delay" : 4 }
-                                              , { "write" : [4,4] }
-                                              ]
-                   }
-                 , { "id"                   : 4
-                   , "resourceRequirements" : "ANY_RES"
-                   , "executionTime"        : 2
-                   , "commands"             : [ { "read"  : [5,1] }
-                                              , { "read"  : [6,1] }
-                                              , { "delay" : 2 }
-                                              , { "write" : [0,1] }
-                                              ]
-                   }
-                 , { "id"                   : 5
-                   , "resourceRequirements" : "ANY_RES"
-                   , "executionTime"        : 2
-                   , "commands"             : [ { "read"  : [4,1] }
-                                              , { "read"  : [7,1] }
-                                              , { "delay" : 2 }
-                                              , { "write" : [1,1] }
-                                              ]
-                   }
-                 , { "id"                   : 6
-                   , "resourceRequirements" : "ANY_RES"
-                   , "executionTime"        : 2
-                   , "commands"             : [ { "read"  : [4,1] }
-                                              , { "read"  : [7,1] }
-                                              , { "delay" : 2 }
-                                              , { "write" : [2,1] }
-                                              ]
-                   }
-                 , { "id"                   : 7
-                   , "resourceRequirements" : "ANY_RES"
-                   , "executionTime"        : 2
-                   , "commands"             : [ { "read"  : [5,1] }
-                                              , { "read"  : [6,1] }
-                                              , { "delay" : 2 }
-                                              , { "write" : [3,1] }
-                                              ]
-                   }
-                 ]
-             , "edges" :
-                 [ { "nodeOut" : -1
-                   , "nodeIn"  : 1
-                   , "ntokens" : 10
+                   , "ntokens" : 2
                    }
                  , { "nodeOut" : 1
                    , "nodeIn"  : 4
@@ -169,7 +85,7 @@
                  ]
              }
            ]
-, "Distribution" : "half"
+, "Distribution" : "all"
 , "Platform" :
     [ { "id"   : 0
       , "type" : { "mem" : 5000 }
