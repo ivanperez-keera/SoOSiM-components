@@ -30,7 +30,7 @@ newThread ::
   -> (Int,Int)
   -> Deadline
   -> Thread
-newThread tId exec prg mem dl = Thread tId 0 0 [] [] exec ANY_RES Killed (-1) 0 prg mem dl
+newThread tId exec prg mem dl = Thread tId 0 0 [] [] exec ANY_RES Blocked (-1) 0 prg mem dl
 
 -- | Create a new thread body / instance
 threadInstance ::

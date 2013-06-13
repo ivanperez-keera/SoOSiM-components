@@ -26,7 +26,7 @@ instance ComponentInterface PeriodicIO where
   type State PeriodicIO               = PeriodicIOS
   type Receive PeriodicIO             = PIO_Cmd
   type Send PeriodicIO                = ()
-  initState                           = const (PeriodicIOS (undefined,[],(-1)))
+  initState                           = const (PeriodicIOS (error "AAP",[],(-1)))
   componentName (PeriodicIO an) = ("<<" ++ an ++ ">>Periodic IO")
   componentBehaviour                  = const periodicIO
 

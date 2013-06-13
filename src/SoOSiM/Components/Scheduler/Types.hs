@@ -45,7 +45,7 @@ data SC_State
     -- | Name of the app being schedules
   , _appName :: String
     -- | Periodic I/O
-  , _periodic_edges :: TVar [(TQueue (Int,Int), Int, Int, Int)]
+  , _periodic_edges :: Maybe (TVar [(TQueue (Int,Int), Int, Int, Int)])
   , _last_run :: Int
   }
 
@@ -60,7 +60,7 @@ byDeadline t1 t2 = compare (_relativeDeadline t1 `addDL` _activation_time t1) (_
     addDL (Exact i) j = Exact (i + j)
 
 schedIState :: SC_State
-schedIState = SC_State (-1) empty [] [] empty empty empty empty empty byArrivalTime "" undefined (-1)
+schedIState = SC_State (-1) empty [] [] empty empty empty empty empty byArrivalTime "" Nothing (-1)
 
 makeLenses ''SC_State
 
@@ -71,6 +71,7 @@ data SC_Cmd
          (Maybe String)
          String
          (TVar [(TQueue (Int,Int),Int,Int,Int)])
+         (HashMap ThreadId ComponentId)
   | ThreadCompleted ThreadId
   | WakeUpThreads
   | FindFreeResources ThreadId

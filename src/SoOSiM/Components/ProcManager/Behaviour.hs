@@ -25,6 +25,7 @@ import qualified SoOSiM
 import SoOSiM hiding (traceMsg)
 import SoOSiM.Components.ApplicationHandler
 import SoOSiM.Components.Common
+import SoOSiM.Components.Deployer
 import SoOSiM.Components.MemoryManager
 import SoOSiM.Components.PeriodicIO
 import SoOSiM.Components.ResourceDescriptor
@@ -147,19 +148,26 @@ behaviour (Message _ (RunProgram fN) retAddr) = do
 
   mmMasterId <- lift $ createMemoryManager Nothing Nothing
 
+  -- Now initialize the scheduler, passing the list of
+  -- threads, and the list of resources
+  threadVars <- T.mapM (lift . runSTM . newTVar) threads'
+  pmId <- lift $ getComponentId
+  sId  <- lift $ newScheduler pmId
+
+  -- Deploy all the threads
+  dmId <- lift $ deployer
+  let thInfo = map (\tId -> (tId, threadVars HashMap.! tId, head $ th_all HashMap.! tId,fN)) (HashMap.keys th_all)
+  thCIDs <- lift $ deployThreads dmId sId thInfo
+  let cmMap = HashMap.fromList $ zip (HashMap.keys th_all) thCIDs
+
   -- Instantiate memory managers on those nodes where threads are assigned
   forM_ (HashMap.toList th_all) $ \(tId,(rId:_)) ->
     do mmId <- lift $ createMemoryManager (Just rId) (Just mmMasterId)
        let (b,s) = (threads HashMap.! tId) ^. localMem
        unless (b == 0 && s == 0) $ lift $ registerMem (Just mmId) b s
 
-  -- Now initialize the scheduler, passing the list of
-  -- threads, and the list of resources
-  threads'' <- T.mapM (lift . runSTM . newTVar) threads'
-  pmId <- lift $ getComponentId
-  sId  <- lift $ newScheduler pmId
   traceMsg $ "Starting scheduler"
-  lift $ initScheduler sId threads'' rc th_all (schedulerSort thread_graph) fN periodicEdgesS
+  lift $ initScheduler sId threadVars rc th_all (schedulerSort thread_graph) fN periodicEdgesS cmMap
 
   -- Initialize Periodic I/O if needed
   unless (null periodicEdges && null deadlineEdges) $ do

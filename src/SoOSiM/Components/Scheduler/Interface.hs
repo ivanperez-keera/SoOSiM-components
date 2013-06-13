@@ -47,9 +47,10 @@ initScheduler ::
   -> Maybe String
   -> String
   -> TVar [(TQueue (Int,Int),Int,Int,Int)]
+  -> HashMap ThreadId ComponentId
   -> Sim ()
-initScheduler cId th res th_all smM an pE =
-  notify Scheduler cId (Init th res th_all smM an pE)
+initScheduler cId th res th_all smM an pE compMap =
+  notify Scheduler cId (Init th res th_all smM an pE compMap)
 
 stopScheduler ::
   ComponentId

@@ -13,6 +13,7 @@ import SoOSiM.Components.ResourceManager
 import SoOSiM.Components.Scheduler
 import SoOSiM.Components.SoOSApplicationGraph
 import SoOSiM.Components.MemoryManager
+import SoOSiM.Components.Deployer
 
 import SoOSiM.Examples.Parser
 
@@ -22,6 +23,7 @@ loader f = do
 
   initSim (res_id $ head rs) $ do
     traceMsg "Start the application handler"
+    dmId <- deployer
     ahId <- applicationHandler
     addPrograms ahId (HashMap.fromList (zip (map appName apps) apps))
 

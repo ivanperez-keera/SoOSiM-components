@@ -49,15 +49,16 @@ liftS = Sched . lift
 behaviour ::
   Input SC_Cmd
   -> Sched Bool
-behaviour (Message _ (Init tl res th_all smM an pE) retAddr) = do
+behaviour (Message _ (Init tl res th_all smM an pE cmMap) retAddr) = do
   thread_list .= tl
-  periodic_edges .= pE
+  periodic_edges .= (Just pE)
   -- Initializes all resources
   mapM_ (\x -> do res_map.at (fst x)   ?= IDLE_RES
                   res_types.at (fst x) ?= (snd x)
         ) res
 
   appName .= an
+  components .= cmMap
 
   -- all threads are initially blocked
   blocked               .= (HashMap.keys tl)
@@ -158,7 +159,7 @@ schedule = do
   -- CONSUMED, NOTHING ELSE TO DO)
   finished <- and <$> T.sequenceA [ uses ready null
                                   , uses exec_threads HashMap.null
-                                  , use periodic_edges >>= (fmap null . liftS . runSTM . readTVar)
+                                  , use periodic_edges >>= (maybe (return False) (fmap null . liftS . runSTM . readTVar))
                                   ]
   if finished
     then do
@@ -187,6 +188,7 @@ schedule = do
           Just t <- use (thread_list.at th)
           t' <- liftS . runSTM $ readTVar t
           when (t'^.execution_state == Killed) $ do
+            error $ "Threads shouldn't be killed"
             sId <- liftS $ getComponentId
             cId <- liftS $ threadInstance th sId t res aN
             components.at th ?= cId
