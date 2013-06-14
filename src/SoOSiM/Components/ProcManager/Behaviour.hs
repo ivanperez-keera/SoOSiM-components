@@ -146,8 +146,6 @@ behaviour (Message _ (RunProgram fN) retAddr) = do
   traceMsg $ "ThreadAssignment(" ++ fromMaybe "SIMPLE" (allocSort thread_graph) ++ "): "  ++ show th_all
   periodicEdgesS <- lift $ runSTM $ newTVar periodicEdges
 
-  mmMasterId <- lift $ createMemoryManager Nothing Nothing
-
   -- Now initialize the scheduler, passing the list of
   -- threads, and the list of resources
   threadVars <- T.mapM (lift . runSTM . newTVar) threads'
@@ -156,15 +154,15 @@ behaviour (Message _ (RunProgram fN) retAddr) = do
 
   -- Deploy all the threads
   dmId <- lift $ deployer
-  let thInfo = map (\tId -> (tId, threadVars HashMap.! tId, head $ th_all HashMap.! tId,fN)) (HashMap.keys th_all)
+  let thInfo = map (\tId -> ( tId
+                            , threadVars HashMap.! tId
+                            , head $ th_all HashMap.! tId
+                            , fN
+                            , (threads HashMap.! tId) ^. localMem
+                            ))
+                   (HashMap.keys th_all)
   thCIDs <- lift $ deployThreads dmId sId thInfo
   let cmMap = HashMap.fromList $ zip (HashMap.keys th_all) thCIDs
-
-  -- Instantiate memory managers on those nodes where threads are assigned
-  forM_ (HashMap.toList th_all) $ \(tId,(rId:_)) ->
-    do mmId <- lift $ createMemoryManager (Just rId) (Just mmMasterId)
-       let (b,s) = (threads HashMap.! tId) ^. localMem
-       unless (b == 0 && s == 0) $ lift $ registerMem (Just mmId) b s
 
   traceMsg $ "Starting scheduler"
   lift $ initScheduler sId threadVars rc th_all (schedulerSort thread_graph) fN periodicEdgesS cmMap

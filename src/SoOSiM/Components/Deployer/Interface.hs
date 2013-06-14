@@ -34,6 +34,7 @@ deployThreads ::
        , TVar Thread -- ^ Reference to the thread meta-data
        , NodeId      -- ^ Node on which to instantiate the thread
        , String      -- ^ Name of the application the thread belongs to
+       , (Int,Int)   -- ^ Memory to reserve
        ) ]
   -> Sim [ComponentId]
 deployThreads dpId sId ths =
