@@ -14,7 +14,7 @@ import SoOSiM.Components.Scheduler
 
 newtype PeriodicIO = PeriodicIO String
 
-newtype PeriodicIOS = PeriodicIOS ( TVar [(TQueue (Int,Int),Int,Int,Int)]
+newtype PeriodicIOS = PeriodicIOS ( Maybe (TVar [(TQueue (Int,Int),Int,Int,Int)])
                                   , [(TQueue (Int,Int),Int,String,Int,Int)]
                                   , ComponentId
                                   )
@@ -26,7 +26,7 @@ instance ComponentInterface PeriodicIO where
   type State PeriodicIO               = PeriodicIOS
   type Receive PeriodicIO             = PIO_Cmd
   type Send PeriodicIO                = ()
-  initState                           = const (PeriodicIOS (error "AAP",[],(-1)))
+  initState                           = const (PeriodicIOS (Nothing,[],(-1)))
   componentName (PeriodicIO an) = ("<<" ++ an ++ ">>Periodic IO")
   componentBehaviour                  = const periodicIO
 
@@ -36,7 +36,7 @@ periodicIO ::
   -> Sim PeriodicIOS
 periodicIO _ (Message _ PIO_Stop _) = stop
 
-periodicIO s@(PeriodicIOS (qsS,ds,sId)) _ = do
+periodicIO s@(PeriodicIOS (Just qsS,ds,sId)) _ = do
   currentTime <- getTime
   qs  <- runSTM $ readTVar qsS
   qs' <- fmap catMaybes $ forM qs $ \(q,c,p,n) -> do
@@ -54,7 +54,9 @@ periodicIO s@(PeriodicIOS (qsS,ds,sId)) _ = do
                                               ; return (q,n,fN,tid,latest')
                                               }
 
-  return (PeriodicIOS (qsS,ds',sId))
+  return (PeriodicIOS (Just qsS,ds',sId))
+
+periodicIO s@(PeriodicIOS (Nothing,_,_)) _ = yield s
 
 stopPIO :: ComponentId -> String -> Sim ()
 stopPIO cId n = notify (PeriodicIO n) cId PIO_Stop

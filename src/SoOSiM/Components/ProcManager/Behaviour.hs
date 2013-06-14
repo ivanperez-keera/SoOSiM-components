@@ -171,7 +171,7 @@ behaviour (Message _ (RunProgram fN) retAddr) = do
 
   -- Initialize Periodic I/O if needed
   unless (null periodicEdges && null deadlineEdges) $ do
-    let pIOState = PeriodicIOS (periodicEdgesS,deadlineEdges,sId)
+    let pIOState = PeriodicIOS (Just periodicEdgesS,deadlineEdges,sId)
     newId <- lift $ SoOSiM.createComponentNPS Nothing Nothing (Just pIOState) (PeriodicIO fN)
     pIO .= newId
 
