@@ -5,6 +5,7 @@ import Data.Aeson           ((.:),eitherDecode,FromJSON(..),Value (..))
 import Data.ByteString.Lazy as BS
 import Data.Maybe           (fromJust)
 import Control.Applicative  ((<$>),(<*>))
+import Control.Monad        (mzero)
 
 import SoOSiM.Components.ResourceDescriptor
 import SoOSiM.Components.SoOSApplicationGraph
@@ -18,6 +19,7 @@ instance FromJSON Example where
       (v .: "Apps") <*>
       (v .: "Distribution") <*>
       (v .: "Platform")
+  parseJSON _ = mzero
 
 readExample ::
   FilePath
