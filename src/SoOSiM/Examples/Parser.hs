@@ -19,7 +19,7 @@ instance FromJSON Example where
       (v .: "Apps") <*>
       (v .: "Distribution") <*>
       (v .: "Platform")
-  parseJSON _ = mzero
+  parseJSON k = error $ "Parse error, not an object: " ++ show k
 
 readExample ::
   FilePath
