@@ -22,6 +22,8 @@ module SoOSiM.Components.Thread
   , res_id
   , activation_time
   , localMem
+  , relativeDeadlineOut
+  , relativeDeadlineIn
   )
 where
 

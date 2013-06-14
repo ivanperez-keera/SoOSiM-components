@@ -54,7 +54,7 @@ byArrivalTime :: Thread -> Thread -> Ordering
 byArrivalTime t1 t2 = compare (_activation_time t1) (_activation_time t2)
 
 byDeadline :: Thread -> Thread -> Ordering
-byDeadline t1 t2 = compare (_relativeDeadline t1 `addDL` _activation_time t1) (_relativeDeadline t2 `addDL` _activation_time t2)
+byDeadline t1 t2 = compare (_relativeDeadlineOut t1 `addDL` _activation_time t1) (_relativeDeadlineOut t2 `addDL` _activation_time t2)
   where
     addDL Infinity  j = Exact (400000 + j)
     addDL (Exact i) j = Exact (i + j)

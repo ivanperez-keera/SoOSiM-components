@@ -13,6 +13,7 @@ import Control.Monad.State.Strict
 import Control.Monad.Writer
 import           Data.Char           (toLower)
 import qualified Data.Foldable       as F
+import           Data.Function       (on)
 import           Data.HashMap.Strict (HashMap)
 import qualified Data.HashMap.Strict as HashMap
 import qualified Data.List           as L
@@ -57,13 +58,14 @@ behaviour (Message _ (RunProgram fN) retAddr) = do
   -- Create all threads
   let deadlines = map (inferDeadline (edges thread_graph)) (vertices thread_graph)
   let threads = HashMap.fromList
-              $ zipWith (\v d -> ( v_id v
-                                 , newThread (v_id v)
-                                             (executionTime v)
-                                             (appCommands v)
-                                             (memRange v)
-                                             d
-                                 ))
+              $ zipWith (\v (dO,dI) -> ( v_id v
+                                       , newThread (v_id v)
+                                                   (executionTime v)
+                                                   (appCommands v)
+                                                   (memRange v)
+                                                   dO
+                                                   dI
+                                       ))
                 (vertices thread_graph) deadlines
 
   (th_all,rc) <- untilJust $ do
@@ -101,6 +103,7 @@ behaviour (Message _ (RunProgram fN) retAddr) = do
     -- let th_allM = allocate threads rc assignResourceSimple ()
     let th_allM = case (fmap (map toLower) $ allocSort thread_graph) of
                     Just "minwcet" -> allocate threads rc assignResourceMinWCET 0
+                    Just "bestfit" -> allocate threads rc assignResourceBestFit 0.0
                     _              -> allocate threads rc assignResourceSimple ()
 
     -- Another alternative allocation strategy
@@ -260,11 +263,59 @@ assignResourceMinWCET t rms = (c_rs' ++ other_rs, rIdM)
     maxUtil' :: (ResourceId,Int) -> (ResourceId,Int) -> Ordering
     maxUtil' (_,u1) (_,u2) = compare u1 u2
 
-inferDeadline :: [Edge] -> Vertex -> Deadline
-inferDeadline es v = case dls of {[] -> Infinity ; _ -> Exact . head $ L.sort dls}
+assignResourceBestFit :: AssignProc Float
+assignResourceBestFit th rms = (rsUpdated ++ rsOther, rIdM)
   where
-    vId = v_id v
-    es' = filter ((== vId) . start) es
-    dls = catMaybes $ map deadline es'
+    -- Partition into complient and non-complient resources
+    (rsComplient,rsOther) = L.partition (\(resDec,_) -> resDec `isComplient` (th ^. rr)) rms
+    -- Determine the utility of the Thread
+    thUtil                = threadUtility th
+    -- First sort Resource type by best fit
+    rsComplientSorted     = map (second (L.sortBy (maxUtil thUtil))) rsComplient
+    -- Order the resources
+    rsComplientOrdered    = L.sortBy (compareBy (maxUtil thUtil) `on` snd) rsComplientSorted
+
+    -- Assign the resource and update the bin
+    (rIdM,rsUpdated)      = case rsComplientOrdered of
+                              [] -> (Nothing,[])
+                              ((r,(rId:rIds)):rms') -> ( Just (th^.threadId,[fst rId])
+                                                       , (r,((second (+thUtil) rId):rIds)):rms'
+                                                       )
+
+    maxUtil :: Float -> (ResourceId,Float) -> (ResourceId,Float) -> Ordering
+    maxUtil u (_,u1) (_,u2) = let u1' = 1.0 - u1 - u
+                                  u2' = 1.0 - u2 - u
+                              in case (u1' < 0, u2' < 0) of
+                                  (True,True)   -> compare u1' u2'
+                                  (True,False)  -> GT
+                                  (False,True)  -> LT
+                                  (False,False) -> compare u2' u1'
+
+    compareBy :: (a -> a -> Ordering) -> [a] -> [a] -> Ordering
+    compareBy f [] [] = EQ
+    compareBy f [] _  = LT
+    compareBy f _  [] = GT
+    compareBy f (x:xs) (y:ys) = case f x y of
+                                  EQ -> compareBy f xs ys
+                                  c  -> c
+
+
+
+threadUtility :: Thread -> Float
+threadUtility t = case (t ^. relativeDeadlineOut, t ^. relativeDeadlineIn) of
+  (Exact d2, Exact d1) -> let dlDiff = d2 - d1
+                          in if (dlDiff < 1)
+                              then error $ "Thread with ID: " ++ show (t ^. threadId) ++ " has invalid deadlines (inbound,outbound): " ++ show (d1,d2)
+                              else (fromIntegral $ t ^. activation_time) / (fromIntegral dlDiff)
+  (d1,d2) -> error $ "Thread with ID: " ++ show (t ^. threadId) ++ " has unspecified deadlines (inbound,outbound): " ++ show (d1,d2)
+
+inferDeadline :: [Edge] -> Vertex -> (Deadline,Deadline)
+inferDeadline es v = ( case dlsOut of {[] -> Infinity ; (x:_) -> Exact x}
+                     , case dlsIn of {[] -> Infinity ; (x:_) -> Exact x}
+                     )
+  where
+    vId    = v_id v
+    dlsOut = L.sort . catMaybes $ map deadline (filter ((== vId) . start) es)
+    dlsIn  = reverse  . L.sort . catMaybes $ map deadline (filter ((== vId) . end) es)
 
 traceMsg = lift . SoOSiM.traceMsg
