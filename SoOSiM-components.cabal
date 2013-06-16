@@ -28,6 +28,7 @@ library
 
   exposed-modules:    SoOSiM.Components.ApplicationHandler
                       SoOSiM.Components.Common
+                      SoOSiM.Components.Deployer
                       SoOSiM.Components.MemoryManager
                       SoOSiM.Components.ProcManager
                       SoOSiM.Components.ResourceDescriptor
@@ -43,6 +44,10 @@ library
   other-modules:      SoOSiM.Components.ApplicationHandler.Behaviour
                       SoOSiM.Components.ApplicationHandler.Interface
                       SoOSiM.Components.ApplicationHandler.Types
+
+                      SoOSiM.Components.Deployer.Behaviour
+                      SoOSiM.Components.Deployer.Interface
+                      SoOSiM.Components.Deployer.Types
 
                       SoOSiM.Components.MemoryManager.Behaviour
                       SoOSiM.Components.MemoryManager.Interface

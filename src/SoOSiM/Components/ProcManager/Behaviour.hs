@@ -13,6 +13,7 @@ import Control.Monad.State.Strict
 import Control.Monad.Writer
 import           Data.Char           (toLower)
 import qualified Data.Foldable       as F
+import           Data.Function       (on)
 import           Data.HashMap.Strict (HashMap)
 import qualified Data.HashMap.Strict as HashMap
 import qualified Data.List           as L
@@ -25,6 +26,7 @@ import qualified SoOSiM
 import SoOSiM hiding (traceMsg)
 import SoOSiM.Components.ApplicationHandler
 import SoOSiM.Components.Common
+import SoOSiM.Components.Deployer
 import SoOSiM.Components.MemoryManager
 import SoOSiM.Components.PeriodicIO
 import SoOSiM.Components.ResourceDescriptor
@@ -56,13 +58,14 @@ behaviour (Message _ (RunProgram fN) retAddr) = do
   -- Create all threads
   let deadlines = map (inferDeadline (edges thread_graph)) (vertices thread_graph)
   let threads = HashMap.fromList
-              $ zipWith (\v d -> ( v_id v
-                                 , newThread (v_id v)
-                                             (executionTime v)
-                                             (appCommands v)
-                                             (memRange v)
-                                             d
-                                 ))
+              $ zipWith (\v (dO,dI) -> ( v_id v
+                                       , newThread (v_id v)
+                                                   (executionTime v)
+                                                   (appCommands v)
+                                                   (memRange v)
+                                                   dO
+                                                   dI
+                                       ))
                 (vertices thread_graph) deadlines
 
   (th_all,rc) <- untilJust $ do
@@ -71,7 +74,9 @@ behaviour (Message _ (RunProgram fN) retAddr) = do
     -- prepares a list of resource requirements,
     -- for each resource description this list contains
     -- the number of desired resources
-    let rl = prepareResourceRequestListSimple thread_graph
+    let rl = case (recSpec thread_graph) of
+               Just rl' -> rl'
+               Nothing  -> prepareResourceRequestListSimple thread_graph
 
     -- the resource manager for this Process manager should be
     -- uniquely identified. here I am assuming that we have a
@@ -98,6 +103,7 @@ behaviour (Message _ (RunProgram fN) retAddr) = do
     -- let th_allM = allocate threads rc assignResourceSimple ()
     let th_allM = case (fmap (map toLower) $ allocSort thread_graph) of
                     Just "minwcet" -> allocate threads rc assignResourceMinWCET 0
+                    Just "bestfit" -> allocate threads rc assignResourceBestFit 0.0
                     _              -> allocate threads rc assignResourceSimple ()
 
     -- Another alternative allocation strategy
@@ -143,25 +149,30 @@ behaviour (Message _ (RunProgram fN) retAddr) = do
   traceMsg $ "ThreadAssignment(" ++ fromMaybe "SIMPLE" (allocSort thread_graph) ++ "): "  ++ show th_all
   periodicEdgesS <- lift $ runSTM $ newTVar periodicEdges
 
-  mmMasterId <- lift $ createMemoryManager Nothing Nothing
-
-  -- Instantiate memory managers on those nodes where threads are assigned
-  forM_ (HashMap.toList th_all) $ \(tId,(rId:_)) ->
-    do mmId <- lift $ createMemoryManager (Just rId) (Just mmMasterId)
-       let (b,s) = (threads HashMap.! tId) ^. localMem
-       unless (b == 0 && s == 0) $ lift $ registerMem (Just mmId) b s
-
   -- Now initialize the scheduler, passing the list of
   -- threads, and the list of resources
-  threads'' <- T.mapM (lift . runSTM . newTVar) threads'
+  threadVars <- T.mapM (lift . runSTM . newTVar) threads'
   pmId <- lift $ getComponentId
   sId  <- lift $ newScheduler pmId
+
+  -- Deploy all the threads
+  dmId <- lift $ deployer
+  let thInfo = map (\tId -> ( tId
+                            , threadVars HashMap.! tId
+                            , head $ th_all HashMap.! tId
+                            , fN
+                            , (threads HashMap.! tId) ^. localMem
+                            ))
+                   (HashMap.keys th_all)
+  thCIDs <- lift $ deployThreads dmId sId thInfo
+  let cmMap = HashMap.fromList $ zip (HashMap.keys th_all) thCIDs
+
   traceMsg $ "Starting scheduler"
-  lift $ initScheduler sId threads'' rc th_all (schedulerSort thread_graph) fN periodicEdgesS
+  lift $ initScheduler sId threadVars rc th_all (schedulerSort thread_graph) fN periodicEdgesS cmMap
 
   -- Initialize Periodic I/O if needed
   unless (null periodicEdges && null deadlineEdges) $ do
-    let pIOState = PeriodicIOS (periodicEdgesS,deadlineEdges,sId)
+    let pIOState = PeriodicIOS (Just periodicEdgesS,deadlineEdges,sId)
     newId <- lift $ SoOSiM.createComponentNPS Nothing Nothing (Just pIOState) (PeriodicIO fN)
     pIO .= newId
 
@@ -252,11 +263,59 @@ assignResourceMinWCET t rms = (c_rs' ++ other_rs, rIdM)
     maxUtil' :: (ResourceId,Int) -> (ResourceId,Int) -> Ordering
     maxUtil' (_,u1) (_,u2) = compare u1 u2
 
-inferDeadline :: [Edge] -> Vertex -> Deadline
-inferDeadline es v = case dls of {[] -> Infinity ; _ -> Exact . head $ L.sort dls}
+assignResourceBestFit :: AssignProc Float
+assignResourceBestFit th rms = (rsUpdated ++ rsOther, rIdM)
   where
-    vId = v_id v
-    es' = filter ((== vId) . start) es
-    dls = catMaybes $ map deadline es'
+    -- Partition into complient and non-complient resources
+    (rsComplient,rsOther) = L.partition (\(resDec,_) -> resDec `isComplient` (th ^. rr)) rms
+    -- Determine the utility of the Thread
+    thUtil                = threadUtility th
+    -- First sort Resource type by best fit
+    rsComplientSorted     = map (second (L.sortBy (maxUtil thUtil))) rsComplient
+    -- Order the resources
+    rsComplientOrdered    = L.sortBy (compareBy (maxUtil thUtil) `on` snd) rsComplientSorted
+
+    -- Assign the resource and update the bin
+    (rIdM,rsUpdated)      = case rsComplientOrdered of
+                              [] -> (Nothing,[])
+                              ((r,(rId:rIds)):rms') -> ( Just (th^.threadId,[fst rId])
+                                                       , (r,((second (+thUtil) rId):rIds)):rms'
+                                                       )
+
+    maxUtil :: Float -> (ResourceId,Float) -> (ResourceId,Float) -> Ordering
+    maxUtil u (_,u1) (_,u2) = let u1' = 1.0 - u1 - u
+                                  u2' = 1.0 - u2 - u
+                              in case (u1' < 0, u2' < 0) of
+                                  (True,True)   -> compare u1' u2'
+                                  (True,False)  -> GT
+                                  (False,True)  -> LT
+                                  (False,False) -> compare u2' u1'
+
+    compareBy :: (a -> a -> Ordering) -> [a] -> [a] -> Ordering
+    compareBy f [] [] = EQ
+    compareBy f [] _  = LT
+    compareBy f _  [] = GT
+    compareBy f (x:xs) (y:ys) = case f x y of
+                                  EQ -> compareBy f xs ys
+                                  c  -> c
+
+
+
+threadUtility :: Thread -> Float
+threadUtility t = case (t ^. relativeDeadlineOut, t ^. relativeDeadlineIn) of
+  (Exact d2, Exact d1) -> let dlDiff = d2 - d1
+                          in if (dlDiff < 1)
+                              then error $ "Thread with ID: " ++ show (t ^. threadId) ++ " has invalid deadlines (inbound,outbound): " ++ show (d1,d2)
+                              else (fromIntegral $ t ^. activation_time) / (fromIntegral dlDiff)
+  (d1,d2) -> error $ "Thread with ID: " ++ show (t ^. threadId) ++ " has unspecified deadlines (inbound,outbound): " ++ show (d1,d2)
+
+inferDeadline :: [Edge] -> Vertex -> (Deadline,Deadline)
+inferDeadline es v = ( case dlsOut of {[] -> Infinity ; (x:_) -> Exact x}
+                     , case dlsIn of {[] -> Infinity ; (x:_) -> Exact x}
+                     )
+  where
+    vId    = v_id v
+    dlsOut = L.sort . catMaybes $ map deadline (filter ((== vId) . start) es)
+    dlsIn  = reverse  . L.sort . catMaybes $ map deadline (filter ((== vId) . end) es)
 
 traceMsg = lift . SoOSiM.traceMsg

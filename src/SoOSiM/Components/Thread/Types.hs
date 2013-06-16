@@ -12,7 +12,7 @@ data ThreadState = Blocked | Waiting | Executing | Killed
   deriving Eq
 
 data Deadline = Infinity | Exact Int
-  deriving Eq
+  deriving (Eq,Show)
 
 instance Ord Deadline where
   compare Infinity Infinity   = EQ
@@ -49,7 +49,8 @@ data Thread
   , _activation_time :: Int
   , _program         :: [AppCommand]
   , _localMem        :: (Int,Int)
-  , _relativeDeadline :: Deadline
+  , _relativeDeadlineOut :: Deadline
+  , _relativeDeadlineIn  :: Deadline
   }
 
 makeLenses ''Thread

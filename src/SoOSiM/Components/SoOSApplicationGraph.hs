@@ -111,6 +111,7 @@ data ApplicationGraph
   { appName       :: String
   , schedulerSort :: Maybe String
   , allocSort     :: Maybe String
+  , recSpec       :: Maybe [ (ResourceDescriptor,Int) ]
   , vertices      :: [Vertex]
   , edges         :: [Edge]
   } deriving Show
@@ -121,9 +122,10 @@ instance FromJSON ApplicationGraph where
       (v .: "name") <*>
       (v .:? "scheduler") <*>
       (v .:? "allocation") <*>
+      (v .:? "resourceSpecification" ) <*>
       (v .: "vertices") <*>
       (v .: "edges")
 
 -- | returns the total number of vertexes
 numberOfVertices :: ApplicationGraph -> Int
-numberOfVertices (ApplicationGraph _ _ _ v _) = length v
+numberOfVertices (ApplicationGraph _ _ _ _ v _) = length v
